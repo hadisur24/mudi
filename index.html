@@ -1,0 +1,1874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventory Management Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --success: #2ecc71;
+            --danger: #e74c3c;
+            --warning: #f39c12;
+            --light: #ecf0f1;
+            --dark: #2c3e50;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 20px 0;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .logo i {
+            font-size: 2.5rem;
+        }
+        
+        .logo h1 {
+            font-size: 1.8rem;
+            font-weight: 600;
+        }
+        
+        .nav-tabs {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            padding: 0 20px;
+            flex-wrap: wrap;
+        }
+        
+        .tab-btn {
+            padding: 10px 20px;
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+        
+        .tab-btn:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        
+        .tab-btn.active {
+            background: white;
+            color: var(--primary);
+        }
+        
+        .stats-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            transition: transform 0.3s;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .card-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+        }
+        
+        .purchase-card .card-icon {
+            background: rgba(52, 152, 219, 0.1);
+            color: var(--secondary);
+        }
+        
+        .sales-card .card-icon {
+            background: rgba(46, 204, 113, 0.1);
+            color: var(--success);
+        }
+        
+        .profit-card .card-icon {
+            background: rgba(243, 156, 18, 0.1);
+            color: var(--warning);
+        }
+        
+        .card h3 {
+            font-size: 1rem;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .card .value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        
+        .card .change {
+            font-size: 0.9rem;
+            color: #666;
+        }
+        
+        .change.positive {
+            color: var(--success);
+        }
+        
+        .change.negative {
+            color: var(--danger);
+        }
+        
+        .dashboard-section {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+        
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .section-header h2 {
+            font-size: 1.5rem;
+            color: var(--primary);
+        }
+        
+        .section-actions button {
+            padding: 8px 15px;
+            background: var(--secondary);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background 0.3s;
+        }
+        
+        .section-actions button:hover {
+            background: #2980b9;
+        }
+        
+        .section-actions button i {
+            margin-right: 5px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        thead {
+            background: #f8f9fa;
+        }
+        
+        th {
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--primary);
+            border-bottom: 2px solid #eee;
+            font-size: 0.9rem;
+        }
+        
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            font-size: 0.9rem;
+        }
+        
+        tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .status-badge {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        
+        .status-delivered {
+            background: rgba(46, 204, 113, 0.1);
+            color: var(--success);
+        }
+        
+        .status-pending {
+            background: rgba(243, 156, 18, 0.1);
+            color: var(--warning);
+        }
+        
+        .status-cancelled {
+            background: rgba(231, 76, 60, 0.1);
+            color: var(--danger);
+        }
+        
+        .chart-container {
+            height: 300px;
+            margin-top: 20px;
+        }
+        
+        .supplier-table {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            padding: 20px;
+            background: var(--primary);
+            color: white;
+            border-radius: 10px 10px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-header h3 {
+            font-size: 1.5rem;
+        }
+        
+        .close-modal {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+        
+        .modal-body {
+            padding: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--primary);
+        }
+        
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 30px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: var(--secondary);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #2980b9;
+        }
+        
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #7f8c8d;
+        }
+        
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #27ae60;
+        }
+        
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+        
+        .item-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+        
+        .remove-item {
+            background: var(--danger);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .add-item-btn {
+            background: var(--success);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-top: 10px;
+        }
+        
+        .doc-preview {
+            background: #f8f9fa;
+            border: 1px dashed #ddd;
+            border-radius: 5px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .doc-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .doc-header h2 {
+            color: var(--primary);
+            margin-bottom: 5px;
+        }
+        
+        .doc-details {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 50px;
+            border-top: 1px solid #eee;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+        
+        .loading i {
+            font-size: 2rem;
+            color: var(--secondary);
+            margin-bottom: 10px;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        @media (max-width: 768px) {
+            .stats-cards {
+                grid-template-columns: 1fr;
+            }
+            
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .item-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .header-content {
+                flex-direction: column;
+                gap: 20px;
+            }
+            
+            .nav-tabs {
+                flex-wrap: wrap;
+            }
+            
+            th, td {
+                padding: 8px;
+                font-size: 0.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <div class="logo">
+                <i class="fas fa-boxes"></i>
+                <h1>Inventory Management System</h1>
+            </div>
+            <div>
+                <button class="btn btn-secondary" onclick="loadDataFromGoogleSheets()">
+                    <i class="fas fa-sync-alt"></i> Refresh Data
+                </button>
+            </div>
+        </div>
+        
+        <div class="nav-tabs">
+            <button class="tab-btn active" onclick="openTab('dashboard')">
+                <i class="fas fa-tachometer-alt"></i> Dashboard
+            </button>
+            <button class="tab-btn" onclick="openTab('orders')">
+                <i class="fas fa-clipboard-list"></i> All Orders
+            </button>
+            <button class="tab-btn" onclick="openTab('suppliers')">
+                <i class="fas fa-truck"></i> Suppliers
+            </button>
+            <button class="tab-btn" onclick="showDeliveryModal()">
+                <i class="fas fa-file-export"></i> Delivery Challan
+            </button>
+            <button class="tab-btn" onclick="showBillModal()">
+                <i class="fas fa-file-invoice-dollar"></i> Generate Bill
+            </button>
+        </div>
+    </header>
+    
+    <div class="container">
+        <!-- Dashboard Tab -->
+        <div id="dashboard" class="tab-content active">
+            <div class="stats-cards">
+                <div class="card purchase-card">
+                    <div class="card-icon">
+                        <i class="fas fa-shopping-cart"></i>
+                    </div>
+                    <h3>Total Purchase</h3>
+                    <div class="value" id="total-purchase">$0.00</div>
+                    <div class="change positive" id="purchase-change">Loading...</div>
+                </div>
+                
+                <div class="card sales-card">
+                    <div class="card-icon">
+                        <i class="fas fa-rupee-sign"></i>
+                    </div>
+                    <h3>Total Sales</h3>
+                    <div class="value" id="total-sales">$0.00</div>
+                    <div class="change positive" id="sales-change">Loading...</div>
+                </div>
+                
+                <div class="card profit-card">
+                    <div class="card-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <h3>Total Profit</h3>
+                    <div class="value" id="total-profit">$0.00</div>
+                    <div class="change positive" id="profit-change">Loading...</div>
+                </div>
+            </div>
+            
+            <div class="dashboard-section">
+                <div class="section-header">
+                    <h2>Monthly Performance</h2>
+                </div>
+                <div class="chart-container">
+                    <canvas id="monthlyChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="dashboard-section">
+                <div class="section-header">
+                    <h2>Top Suppliers</h2>
+                </div>
+                <div class="chart-container">
+                    <canvas id="supplierChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="dashboard-section">
+                <div class="section-header">
+                    <h2>Recent Orders</h2>
+                </div>
+                <div class="supplier-table">
+                    <table id="recent-orders">
+                        <thead>
+                            <tr>
+                                <th>PO Number</th>
+                                <th>Supplier</th>
+                                <th>Item</th>
+                                <th>Qty</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="6" class="loading">
+                                    <i class="fas fa-spinner fa-spin"></i><br>
+                                    Loading data from Google Sheets...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- All Orders Tab -->
+        <div id="orders" class="tab-content">
+            <div class="dashboard-section">
+                <div class="section-header">
+                    <h2>All Purchase Orders</h2>
+                    <div class="section-actions">
+                        <button onclick="exportToExcel()">
+                            <i class="fas fa-file-export"></i> Export Excel
+                        </button>
+                    </div>
+                </div>
+                <div class="supplier-table">
+                    <table id="all-orders">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>PO Number</th>
+                                <th>PR No</th>
+                                <th>Item</th>
+                                <th>Supplier</th>
+                                <th>Qty</th>
+                                <th>Purchase Price</th>
+                                <th>Selling Price</th>
+                                <th>Purchase Amt</th>
+                                <th>Selling Amt</th>
+                                <th>Status</th>
+                                <th>Bill Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="12" class="loading">
+                                    <i class="fas fa-spinner fa-spin"></i><br>
+                                    Loading data from Google Sheets...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Suppliers Tab -->
+        <div id="suppliers" class="tab-content">
+            <div class="dashboard-section">
+                <div class="section-header">
+                    <h2>Supplier Wise Analysis</h2>
+                    <div class="section-actions">
+                        <button onclick="printSupplierReport()">
+                            <i class="fas fa-print"></i> Print Report
+                        </button>
+                    </div>
+                </div>
+                <div class="supplier-table">
+                    <table id="supplier-analysis">
+                        <thead>
+                            <tr>
+                                <th>Supplier</th>
+                                <th>Total Purchase</th>
+                                <th>Total Sales</th>
+                                <th>Profit</th>
+                                <th>Profit %</th>
+                                <th>Orders</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="6" class="loading">
+                                    <i class="fas fa-spinner fa-spin"></i><br>
+                                    Loading supplier data...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Delivery Challan Modal -->
+    <div id="deliveryModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Generate Delivery Challan</h3>
+                <button class="close-modal" onclick="closeDeliveryModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Delivery Challan No</label>
+                        <input type="text" id="deliveryNo" value="DC-1001" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>Date</label>
+                        <input type="date" id="deliveryDate">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Select Item from Inventory</label>
+                    <select id="itemSelect" onchange="addSelectedItem()">
+                        <option value="">-- Select Item --</option>
+                    </select>
+                </div>
+                
+                <h4>Items List</h4>
+                <div id="deliveryItems">
+                    <div class="item-row">
+                        <input type="text" placeholder="Item Description" class="item-desc" required>
+                        <input type="number" placeholder="Quantity" class="item-qty" min="1" value="1" required>
+                        <button type="button" class="remove-item" onclick="removeDeliveryItem(this)">&times;</button>
+                    </div>
+                </div>
+                
+                <button type="button" class="add-item-btn" onclick="addDeliveryItem()">
+                    <i class="fas fa-plus"></i> Add Another Item
+                </button>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeDeliveryModal()">Cancel</button>
+                    <button type="button" class="btn btn-success" onclick="generateDelivery()">Generate Challan</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bill Generator Modal -->
+    <div id="billModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Generate Bill</h3>
+                <button class="close-modal" onclick="closeBillModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Bill No</label>
+                        <input type="text" id="billNo" value="BILL-1001" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>Date</label>
+                        <input type="date" id="billDate">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Select Item from Inventory</label>
+                    <select id="billItemSelect" onchange="addSelectedBillItem()">
+                        <option value="">-- Select Item --</option>
+                    </select>
+                </div>
+                
+                <h4>Items List</h4>
+                <div id="billItems">
+                    <div class="item-row">
+                        <input type="text" placeholder="Item Description" class="bill-item-desc" required>
+                        <input type="number" placeholder="Quantity" class="bill-item-qty" min="1" value="1" required>
+                        <input type="number" placeholder="Selling Price" class="bill-item-price" min="0" step="0.01" required>
+                        <input type="text" placeholder="Total" class="bill-item-total" readonly>
+                        <button type="button" class="remove-item" onclick="removeBillItem(this)">&times;</button>
+                    </div>
+                </div>
+                
+                <button type="button" class="add-item-btn" onclick="addBillItem()">
+                    <i class="fas fa-plus"></i> Add Another Item
+                </button>
+                
+                <div class="form-row" style="margin-top: 20px;">
+                    <div class="form-group">
+                        <label>Sub Total</label>
+                        <input type="text" id="subTotal" value="0.00" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>Tax (%)</label>
+                        <input type="number" id="taxPercent" value="18" min="0" max="100">
+                    </div>
+                    <div class="form-group">
+                        <label>Tax Amount</label>
+                        <input type="text" id="taxAmount" value="0.00" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>Total Amount</label>
+                        <input type="text" id="totalAmount" value="0.00" readonly>
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeBillModal()">Cancel</button>
+                    <button type="button" class="btn btn-success" onclick="generateBill()">Generate Bill</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <footer>
+        <p>Inventory Management System &copy; 2024 | Connected to Google Sheets</p>
+    </footer>
+
+    <script>
+        // ============================================
+        // CONFIGURATION
+        // ============================================
+        const SPREADSHEET_ID = '1BO2-AgJxNF0jp2l6AS14P8mBr8ChqEwHfL6hChFfrSE';
+        const SHEET_NAME = 'Products'; // Change if your sheet has a different name
+        
+        // ============================================
+        // GLOBAL VARIABLES
+        // ============================================
+        let inventoryData = [];
+        let monthlyChart = null;
+        let supplierChart = null;
+        let lastChallanNo = 1000;
+        let lastBillNo = 1000;
+        
+        // ============================================
+        // INITIALIZATION
+        // ============================================
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set default dates
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('deliveryDate').value = today;
+            document.getElementById('billDate').value = today;
+            
+            // Load data from Google Sheets
+            loadDataFromGoogleSheets();
+            
+            // Setup event listeners
+            document.getElementById('taxPercent').addEventListener('input', calculateBillTotal);
+        });
+        
+        // ============================================
+        // GOOGLE SHEETS DATA LOADING
+        // ============================================
+        async function loadDataFromGoogleSheets() {
+            showLoading(true);
+            
+            try {
+                // Since we cannot directly access Google Sheets API from browser without CORS issues,
+                // We'll use Google Sheets publishing feature or Google Apps Script
+                // Method 1: Using Google Sheets JSON API (requires sheet to be published)
+                const data = await fetchGoogleSheetsData();
+                
+                if (data && data.length > 0) {
+                    inventoryData = data;
+                    updateAllDisplays();
+                    showLoading(false);
+                } else {
+                    // Fallback: Try to parse from HTML if JSON method fails
+                    console.log('Trying alternative method to load data...');
+                    await loadDataAlternative();
+                }
+            } catch (error) {
+                console.error('Error loading data:', error);
+                showLoading(false);
+                alert('Error loading data from Google Sheets. Please check the connection.');
+            }
+        }
+        
+        async function fetchGoogleSheetsData() {
+            // Method 1: Using Google Sheets API v4 with API key
+            // You need to enable Google Sheets API and get an API key
+            const API_KEY = ''; // Add your API key here
+            
+            if (!API_KEY) {
+                console.warn('No API key provided. Using alternative method.');
+                return await loadDataAlternative();
+            }
+            
+            const range = 'A:Z'; // Read all columns
+            const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME}!${range}?key=${API_KEY}`;
+            
+            try {
+                const response = await fetch(url);
+                const result = await response.json();
+                
+                if (!result.values || result.values.length === 0) {
+                    throw new Error('No data found in sheet');
+                }
+                
+                const headers = result.values[0];
+                const data = [];
+                
+                for (let i = 1; i < result.values.length; i++) {
+                    const row = result.values[i];
+                    const rowData = {};
+                    
+                    headers.forEach((header, index) => {
+                        rowData[header.trim()] = index < row.length ? row[index] : '';
+                    });
+                    
+                    // Convert numeric fields
+                    ['Qty', 'Purchase Price', 'Selling Price', 'Purchase Amount', 'Selling Amount', 'Amount'].forEach(field => {
+                        if (rowData[field] !== undefined && rowData[field] !== '') {
+                            rowData[field] = parseFloat(rowData[field]) || 0;
+                        }
+                    });
+                    
+                    data.push(rowData);
+                }
+                
+                console.log(`Loaded ${data.length} records from Google Sheets`);
+                return data;
+            } catch (error) {
+                console.error('Google Sheets API error:', error);
+                return await loadDataAlternative();
+            }
+        }
+        
+        async function loadDataAlternative() {
+            // Method 2: Using Google Sheets publishing as CSV
+            // First, you need to publish your sheet: File > Share > Publish to web
+            // Choose CSV format and copy the link
+            const csvUrl = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=${SHEET_NAME}`;
+            
+            try {
+                const response = await fetch(csvUrl);
+                const csvText = await response.text();
+                const data = parseCSV(csvText);
+                return data;
+            } catch (error) {
+                console.error('CSV method failed:', error);
+                
+                // Method 3: Using Google Apps Script Web App
+                // You need to deploy a Google Apps Script as a web app
+                const scriptUrl = ''; // Add your Google Apps Script web app URL here
+                
+                if (scriptUrl) {
+                    try {
+                        const response = await fetch(scriptUrl);
+                        const data = await response.json();
+                        return data;
+                    } catch (scriptError) {
+                        console.error('Google Apps Script method failed:', scriptError);
+                        return [];
+                    }
+                }
+                
+                return [];
+            }
+        }
+        
+        function parseCSV(csvText) {
+            const lines = csvText.split('\n');
+            if (lines.length < 2) return [];
+            
+            const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
+            const data = [];
+            
+            for (let i = 1; i < lines.length; i++) {
+                if (!lines[i].trim()) continue;
+                
+                const values = lines[i].split(',').map(v => v.replace(/"/g, '').trim());
+                const rowData = {};
+                
+                headers.forEach((header, index) => {
+                    rowData[header] = index < values.length ? values[index] : '';
+                    
+                    // Convert numeric fields
+                    if (['Qty', 'Purchase Price', 'Selling Price', 'Purchase Amount', 'Selling Amount', 'Amount'].includes(header)) {
+                        const numValue = parseFloat(rowData[header]);
+                        rowData[header] = isNaN(numValue) ? 0 : numValue;
+                    }
+                });
+                
+                data.push(rowData);
+            }
+            
+            return data;
+        }
+        
+        // ============================================
+        // DATA PROCESSING AND DISPLAY
+        // ============================================
+        function updateAllDisplays() {
+            updateDashboard();
+            updateRecentOrders();
+            updateAllOrdersTable();
+            updateSupplierAnalysis();
+            updateCharts();
+            populateItemDropdowns();
+            updateCounters();
+        }
+        
+        function updateDashboard() {
+            if (inventoryData.length === 0) {
+                document.getElementById('total-purchase').textContent = '$0.00';
+                document.getElementById('total-sales').textContent = '$0.00';
+                document.getElementById('total-profit').textContent = '$0.00';
+                return;
+            }
+            
+            let totalPurchase = 0;
+            let totalSales = 0;
+            
+            inventoryData.forEach(item => {
+                const purchaseAmt = parseFloat(item['Purchase Amount']) || 
+                                   (parseFloat(item['Purchase Price']) || 0) * (parseFloat(item['Qty']) || 0);
+                const salesAmt = parseFloat(item['Selling Amount']) || 
+                                (parseFloat(item['Selling Price']) || 0) * (parseFloat(item['Qty']) || 0);
+                
+                totalPurchase += purchaseAmt;
+                totalSales += salesAmt;
+            });
+            
+            const totalProfit = totalSales - totalPurchase;
+            const profitMargin = totalPurchase > 0 ? (totalProfit / totalPurchase * 100).toFixed(2) : 0;
+            
+            document.getElementById('total-purchase').textContent = formatCurrency(totalPurchase);
+            document.getElementById('total-sales').textContent = formatCurrency(totalSales);
+            document.getElementById('total-profit').textContent = formatCurrency(totalProfit);
+            
+            document.getElementById('purchase-change').textContent = `Margin: ${profitMargin}%`;
+            document.getElementById('sales-change').textContent = `Based on ${inventoryData.length} records`;
+            document.getElementById('profit-change').textContent = totalProfit >= 0 ? 'Profitable' : 'Loss';
+            
+            if (totalProfit < 0) {
+                document.getElementById('profit-change').classList.remove('positive');
+                document.getElementById('profit-change').classList.add('negative');
+            }
+        }
+        
+        function updateRecentOrders() {
+            const tableBody = document.querySelector('#recent-orders tbody');
+            tableBody.innerHTML = '';
+            
+            if (inventoryData.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="6">No data available</td></tr>';
+                return;
+            }
+            
+            // Get recent 10 orders
+            const recentOrders = [...inventoryData]
+                .sort((a, b) => new Date(b.Date || 0) - new Date(a.Date || 0))
+                .slice(0, 10);
+            
+            recentOrders.forEach(order => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${order['PO Number'] || 'N/A'}</td>
+                    <td>${order.Supplier || 'N/A'}</td>
+                    <td>${order['Item Description'] || order.Item || 'N/A'}</td>
+                    <td>${order.Qty || 0}</td>
+                    <td>${formatCurrency(order['Selling Amount'] || 0)}</td>
+                    <td><span class="status-badge ${getStatusClass(order['Delivery Status'])}">
+                        ${order['Delivery Status'] || 'Pending'}
+                    </span></td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+        
+        function updateAllOrdersTable() {
+            const tableBody = document.querySelector('#all-orders tbody');
+            tableBody.innerHTML = '';
+            
+            if (inventoryData.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="12">No data available</td></tr>';
+                return;
+            }
+            
+            inventoryData.forEach(order => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${formatDate(order.Date)}</td>
+                    <td>${order['PO Number'] || 'N/A'}</td>
+                    <td>${order['PR No'] || 'N/A'}</td>
+                    <td>${order['Item Description'] || order.Item || 'N/A'}</td>
+                    <td>${order.Supplier || 'N/A'}</td>
+                    <td>${order.Qty || 0}</td>
+                    <td>${formatCurrency(order['Purchase Price'] || 0)}</td>
+                    <td>${formatCurrency(order['Selling Price'] || 0)}</td>
+                    <td>${formatCurrency(order['Purchase Amount'] || 0)}</td>
+                    <td>${formatCurrency(order['Selling Amount'] || 0)}</td>
+                    <td><span class="status-badge ${getStatusClass(order['Delivery Status'])}">
+                        ${order['Delivery Status'] || 'Pending'}
+                    </span></td>
+                    <td><span class="status-badge ${getBillStatusClass(order['Bill Status'])}">
+                        ${order['Bill Status'] || 'Pending'}
+                    </span></td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+        
+        function updateSupplierAnalysis() {
+            const tableBody = document.querySelector('#supplier-analysis tbody');
+            tableBody.innerHTML = '';
+            
+            if (inventoryData.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="6">No data available</td></tr>';
+                return;
+            }
+            
+            // Group by supplier
+            const supplierMap = new Map();
+            
+            inventoryData.forEach(order => {
+                const supplier = order.Supplier || 'Unknown';
+                const purchaseAmt = parseFloat(order['Purchase Amount']) || 
+                                   (parseFloat(order['Purchase Price']) || 0) * (parseFloat(order.Qty) || 0);
+                const salesAmt = parseFloat(order['Selling Amount']) || 
+                                (parseFloat(order['Selling Price']) || 0) * (parseFloat(order.Qty) || 0);
+                
+                if (!supplierMap.has(supplier)) {
+                    supplierMap.set(supplier, {
+                        purchase: 0,
+                        sales: 0,
+                        count: 0,
+                        profit: 0
+                    });
+                }
+                
+                const data = supplierMap.get(supplier);
+                data.purchase += purchaseAmt;
+                data.sales += salesAmt;
+                data.profit = data.sales - data.purchase;
+                data.count += 1;
+            });
+            
+            // Convert to array and sort by sales
+            const supplierArray = Array.from(supplierMap.entries())
+                .map(([name, data]) => ({ name, ...data }))
+                .sort((a, b) => b.sales - a.sales);
+            
+            // Populate table
+            supplierArray.forEach(supplier => {
+                const profitPercent = supplier.purchase > 0 ? 
+                    ((supplier.profit / supplier.purchase) * 100).toFixed(2) : '0.00';
+                const profitClass = supplier.profit >= 0 ? 'positive' : 'negative';
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><strong>${supplier.name}</strong></td>
+                    <td>${formatCurrency(supplier.purchase)}</td>
+                    <td>${formatCurrency(supplier.sales)}</td>
+                    <td class="${profitClass}">${formatCurrency(supplier.profit)}</td>
+                    <td class="${profitClass}">${profitPercent}%</td>
+                    <td>${supplier.count}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+        
+        function updateCharts() {
+            updateMonthlyChart();
+            updateSupplierChart();
+        }
+        
+        function updateMonthlyChart() {
+            const ctx = document.getElementById('monthlyChart');
+            if (!ctx) return;
+            
+            if (monthlyChart) {
+                monthlyChart.destroy();
+            }
+            
+            // Group data by month
+            const monthlyData = groupDataByMonth();
+            
+            monthlyChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: monthlyData.labels,
+                    datasets: [
+                        {
+                            label: 'Purchase',
+                            data: monthlyData.purchase,
+                            borderColor: '#3498db',
+                            backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Sales',
+                            data: monthlyData.sales,
+                            borderColor: '#2ecc71',
+                            backgroundColor: 'rgba(46, 204, 113, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + value.toLocaleString();
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function updateSupplierChart() {
+            const ctx = document.getElementById('supplierChart');
+            if (!ctx) return;
+            
+            if (supplierChart) {
+                supplierChart.destroy();
+            }
+            
+            // Get top 5 suppliers by sales
+            const supplierMap = new Map();
+            inventoryData.forEach(order => {
+                const supplier = order.Supplier || 'Unknown';
+                const sales = parseFloat(order['Selling Amount']) || 
+                             (parseFloat(order['Selling Price']) || 0) * (parseFloat(order.Qty) || 0);
+                
+                if (supplierMap.has(supplier)) {
+                    supplierMap.set(supplier, supplierMap.get(supplier) + sales);
+                } else {
+                    supplierMap.set(supplier, sales);
+                }
+            });
+            
+            const topSuppliers = Array.from(supplierMap.entries())
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5);
+            
+            supplierChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: topSuppliers.map(s => s[0]),
+                    datasets: [{
+                        label: 'Sales Amount',
+                        data: topSuppliers.map(s => s[1]),
+                        backgroundColor: [
+                            '#3498db', '#2ecc71', '#f39c12', '#e74c3c', '#9b59b6'
+                        ],
+                        borderColor: [
+                            '#2980b9', '#27ae60', '#d68910', '#c0392b', '#8e44ad'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + value.toLocaleString();
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function groupDataByMonth() {
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const purchaseData = new Array(12).fill(0);
+            const salesData = new Array(12).fill(0);
+            
+            inventoryData.forEach(item => {
+                if (item.Date) {
+                    try {
+                        const date = new Date(item.Date);
+                        const month = date.getMonth();
+                        
+                        const purchaseAmt = parseFloat(item['Purchase Amount']) || 
+                                           (parseFloat(item['Purchase Price']) || 0) * (parseFloat(item.Qty) || 0);
+                        const salesAmt = parseFloat(item['Selling Amount']) || 
+                                        (parseFloat(item['Selling Price']) || 0) * (parseFloat(item.Qty) || 0);
+                        
+                        purchaseData[month] += purchaseAmt;
+                        salesData[month] += salesAmt;
+                    } catch (e) {
+                        console.warn('Invalid date format:', item.Date);
+                    }
+                }
+            });
+            
+            return {
+                labels: months,
+                purchase: purchaseData,
+                sales: salesData
+            };
+        }
+        
+        // ============================================
+        // DELIVERY CHALLAN FUNCTIONS
+        // ============================================
+        function showDeliveryModal() {
+            document.getElementById('deliveryModal').style.display = 'flex';
+            generateDeliveryNumber();
+        }
+        
+        function closeDeliveryModal() {
+            document.getElementById('deliveryModal').style.display = 'none';
+            resetDeliveryForm();
+        }
+        
+        function generateDeliveryNumber() {
+            lastChallanNo++;
+            document.getElementById('deliveryNo').value = `DC-${lastChallanNo}`;
+        }
+        
+        function addDeliveryItem() {
+            const container = document.getElementById('deliveryItems');
+            const div = document.createElement('div');
+            div.className = 'item-row';
+            div.innerHTML = `
+                <input type="text" placeholder="Item Description" class="item-desc" required>
+                <input type="number" placeholder="Quantity" class="item-qty" min="1" value="1" required>
+                <button type="button" class="remove-item" onclick="removeDeliveryItem(this)">&times;</button>
+            `;
+            container.appendChild(div);
+        }
+        
+        function removeDeliveryItem(button) {
+            const container = document.getElementById('deliveryItems');
+            if (container.children.length > 1) {
+                button.parentElement.remove();
+            }
+        }
+        
+        function addSelectedItem() {
+            const select = document.getElementById('itemSelect');
+            const selectedItem = select.value;
+            
+            if (selectedItem) {
+                const container = document.getElementById('deliveryItems');
+                const div = document.createElement('div');
+                div.className = 'item-row';
+                div.innerHTML = `
+                    <input type="text" placeholder="Item Description" class="item-desc" value="${selectedItem}" required>
+                    <input type="number" placeholder="Quantity" class="item-qty" min="1" value="1" required>
+                    <button type="button" class="remove-item" onclick="removeDeliveryItem(this)">&times;</button>
+                `;
+                container.appendChild(div);
+                select.value = '';
+            }
+        }
+        
+        function generateDelivery() {
+            const challanNo = document.getElementById('deliveryNo').value;
+            const date = document.getElementById('deliveryDate').value;
+            const items = [];
+            
+            // Collect items
+            document.querySelectorAll('#deliveryItems .item-row').forEach(row => {
+                const desc = row.querySelector('.item-desc').value;
+                const qty = row.querySelector('.item-qty').value;
+                
+                if (desc && qty) {
+                    items.push({
+                        description: desc,
+                        quantity: parseInt(qty) || 1
+                    });
+                }
+            });
+            
+            if (items.length === 0) {
+                alert('Please add at least one item');
+                return;
+            }
+            
+            // Generate printable delivery challan
+            printDeliveryChallan(challanNo, date, items);
+            
+            alert('Delivery Challan generated successfully!');
+            closeDeliveryModal();
+        }
+        
+        function printDeliveryChallan(challanNo, date, items) {
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>Delivery Challan - ${challanNo}</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; margin: 40px; }
+                        .header { text-align: center; margin-bottom: 30px; }
+                        .header h1 { color: #2c3e50; }
+                        .details { display: flex; justify-content: space-between; margin-bottom: 30px; }
+                        table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+                        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+                        th { background-color: #f8f9fa; }
+                        .footer { margin-top: 50px; text-align: center; color: #666; }
+                        @media print {
+                            body { margin: 0; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <h1>DELIVERY CHALLAN</h1>
+                        <p><strong>Challan No:</strong> ${challanNo}</p>
+                    </div>
+                    <div class="details">
+                        <div><strong>Date:</strong> ${formatDate(date)}</div>
+                        <div><strong>Generated By:</strong> Inventory System</div>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Item Description</th>
+                                <th>Quantity</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${items.map((item, index) => `
+                                <tr>
+                                    <td>${index + 1}</td>
+                                    <td>${item.description}</td>
+                                    <td>${item.quantity}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                    <div class="footer">
+                        <p>This is a computer generated document</p>
+                        <p>Inventory Management System © 2024</p>
+                    </div>
+                    <script>
+                        window.onload = function() {
+                            window.print();
+                            setTimeout(function() {
+                                window.close();
+                            }, 1000);
+                        };
+                    <\/script>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+        }
+        
+        function resetDeliveryForm() {
+            document.getElementById('deliveryItems').innerHTML = `
+                <div class="item-row">
+                    <input type="text" placeholder="Item Description" class="item-desc" required>
+                    <input type="number" placeholder="Quantity" class="item-qty" min="1" value="1" required>
+                    <button type="button" class="remove-item" onclick="removeDeliveryItem(this)">&times;</button>
+                </div>
+            `;
+            generateDeliveryNumber();
+        }
+        
+        // ============================================
+        // BILL GENERATOR FUNCTIONS
+        // ============================================
+        function showBillModal() {
+            document.getElementById('billModal').style.display = 'flex';
+            generateBillNumber();
+            calculateBillTotal();
+        }
+        
+        function closeBillModal() {
+            document.getElementById('billModal').style.display = 'none';
+            resetBillForm();
+        }
+        
+        function generateBillNumber() {
+            lastBillNo++;
+            document.getElementById('billNo').value = `BILL-${lastBillNo}`;
+        }
+        
+        function addBillItem() {
+            const container = document.getElementById('billItems');
+            const div = document.createElement('div');
+            div.className = 'item-row';
+            div.innerHTML = `
+                <input type="text" placeholder="Item Description" class="bill-item-desc" required>
+                <input type="number" placeholder="Quantity" class="bill-item-qty" min="1" value="1" required oninput="calculateItemTotal(this)">
+                <input type="number" placeholder="Selling Price" class="bill-item-price" min="0" step="0.01" required oninput="calculateItemTotal(this)">
+                <input type="text" placeholder="Total" class="bill-item-total" readonly>
+                <button type="button" class="remove-item" onclick="removeBillItem(this)">&times;</button>
+            `;
+            container.appendChild(div);
+        }
+        
+        function removeBillItem(button) {
+            const container = document.getElementById('billItems');
+            if (container.children.length > 1) {
+                button.parentElement.remove();
+            }
+            calculateBillTotal();
+        }
+        
+        function addSelectedBillItem() {
+            const select = document.getElementById('billItemSelect');
+            const selectedValue = select.value;
+            
+            if (selectedValue) {
+                const [itemName, itemPrice] = selectedValue.split('|');
+                const container = document.getElementById('billItems');
+                const div = document.createElement('div');
+                div.className = 'item-row';
+                div.innerHTML = `
+                    <input type="text" placeholder="Item Description" class="bill-item-desc" value="${itemName}" required>
+                    <input type="number" placeholder="Quantity" class="bill-item-qty" min="1" value="1" required oninput="calculateItemTotal(this)">
+                    <input type="number" placeholder="Selling Price" class="bill-item-price" min="0" step="0.01" value="${itemPrice || 0}" required oninput="calculateItemTotal(this)">
+                    <input type="text" placeholder="Total" class="bill-item-total" readonly>
+                    <button type="button" class="remove-item" onclick="removeBillItem(this)">&times;</button>
+                `;
+                container.appendChild(div);
+                
+                calculateItemTotal(div.querySelector('.bill-item-qty'));
+                select.value = '';
+                calculateBillTotal();
+            }
+        }
+        
+        function calculateItemTotal(input) {
+            const row = input.closest('.item-row');
+            const qty = parseFloat(row.querySelector('.bill-item-qty').value) || 0;
+            const price = parseFloat(row.querySelector('.bill-item-price').value) || 0;
+            const total = qty * price;
+            
+            row.querySelector('.bill-item-total').value = total.toFixed(2);
+            calculateBillTotal();
+        }
+        
+        function calculateBillTotal() {
+            let subTotal = 0;
+            
+            document.querySelectorAll('#billItems .item-row').forEach(row => {
+                const total = parseFloat(row.querySelector('.bill-item-total').value) || 0;
+                subTotal += total;
+            });
+            
+            const taxPercent = parseFloat(document.getElementById('taxPercent').value) || 0;
+            const taxAmount = subTotal * (taxPercent / 100);
+            const totalAmount = subTotal + taxAmount;
+            
+            document.getElementById('subTotal').value = subTotal.toFixed(2);
+            document.getElementById('taxAmount').value = taxAmount.toFixed(2);
+            document.getElementById('totalAmount').value = totalAmount.toFixed(2);
+        }
+        
+        function generateBill() {
+            const billNo = document.getElementById('billNo').value;
+            const date = document.getElementById('billDate').value;
+            const taxPercent = document.getElementById('taxPercent').value;
+            const items = [];
+            
+            // Collect items
+            document.querySelectorAll('#billItems .item-row').forEach((row, index) => {
+                const desc = row.querySelector('.bill-item-desc').value;
+                const qty = row.querySelector('.bill-item-qty').value;
+                const price = row.querySelector('.bill-item-price').value;
+                const total = row.querySelector('.bill-item-total').value;
+                
+                if (desc && qty && price) {
+                    items.push({
+                        serial: index + 1,
+                        description: desc,
+                        quantity: qty,
+                        price: parseFloat(price).toFixed(2),
+                        total: parseFloat(total).toFixed(2)
+                    });
+                }
+            });
+            
+            if (items.length === 0) {
+                alert('Please add at least one item');
+                return;
+            }
+            
+            // Calculate totals
+            const subTotal = items.reduce((sum, item) => sum + parseFloat(item.total), 0);
+            const taxAmount = subTotal * (taxPercent / 100);
+            const totalAmount = subTotal + taxAmount;
+            
+            // Generate printable bill
+            printBill(billNo, date, items, subTotal, taxAmount, totalAmount, taxPercent);
+            
+            alert('Bill generated successfully!');
+            closeBillModal();
+        }
+        
+        function printBill(billNo, date, items, subTotal, taxAmount, totalAmount, taxPercent) {
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>Invoice - ${billNo}</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; margin: 40px; }
+                        .header { text-align: center; margin-bottom: 30px; }
+                        .header h1 { color: #2c3e50; }
+                        .details { display: flex; justify-content: space-between; margin-bottom: 30px; }
+                        table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+                        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+                        th { background-color: #f8f9fa; }
+                        .totals { margin-left: auto; width: 300px; }
+                        .totals table { width: 100%; }
+                        .footer { margin-top: 50px; text-align: center; color: #666; }
+                        .signature { margin-top: 50px; display: flex; justify-content: space-between; }
+                        @media print {
+                            body { margin: 0; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <h1>TAX INVOICE</h1>
+                        <p><strong>Invoice No:</strong> ${billNo}</p>
+                    </div>
+                    <div class="details">
+                        <div><strong>Date:</strong> ${formatDate(date)}</div>
+                        <div><strong>Generated By:</strong> Inventory System</div>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Item Description</th>
+                                <th>Quantity</th>
+                                <th>Price</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${items.map(item => `
+                                <tr>
+                                    <td>${item.serial}</td>
+                                    <td>${item.description}</td>
+                                    <td>${item.quantity}</td>
+                                    <td>${formatCurrency(item.price)}</td>
+                                    <td>${formatCurrency(item.total)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                    <div class="totals">
+                        <table>
+                            <tr>
+                                <td><strong>Sub Total:</strong></td>
+                                <td>${formatCurrency(subTotal)}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Tax (${taxPercent}%):</strong></td>
+                                <td>${formatCurrency(taxAmount)}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Total Amount:</strong></td>
+                                <td><strong>${formatCurrency(totalAmount)}</strong></td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="signature">
+                        <div>
+                            <p>_________________</p>
+                            <p>Customer Signature</p>
+                        </div>
+                        <div>
+                            <p>_________________</p>
+                            <p>Authorized Signature</p>
+                        </div>
+                    </div>
+                    <div class="footer">
+                        <p>This is a computer generated invoice</p>
+                        <p>Inventory Management System © 2024</p>
+                    </div>
+                    <script>
+                        window.onload = function() {
+                            window.print();
+                            setTimeout(function() {
+                                window.close();
+                            }, 1000);
+                        };
+                    <\/script>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+        }
+        
+        function resetBillForm() {
+            document.getElementById('billItems').innerHTML = `
+                <div class="item-row">
+                    <input type="text" placeholder="Item Description" class="bill-item-desc" required>
+                    <input type="number" placeholder="Quantity" class="bill-item-qty" min="1" value="1" required oninput="calculateItemTotal(this)">
+                    <input type="number" placeholder="Selling Price" class="bill-item-price" min="0" step="0.01" required oninput="calculateItemTotal(this)">
+                    <input type="text" placeholder="Total" class="bill-item-total" readonly>
+                    <button type="button" class="remove-item" onclick="removeBillItem(this)">&times;</button>
+                </div>
+            `;
+            generateBillNumber();
+            document.getElementById('taxPercent').value = 18;
+            calculateBillTotal();
+        }
+        
+        // ============================================
+        // UTILITY FUNCTIONS
+        // ============================================
+        function openTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Remove active class from all buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+            
+            // Add active class to clicked button
+            event.currentTarget.classList.add('active');
+        }
+        
+        function showLoading(show) {
+            if (show) {
+                document.body.style.cursor = 'wait';
+            } else {
+                document.body.style.cursor = 'default';
+            }
+        }
+        
+        function populateItemDropdowns() {
+            const deliverySelect = document.getElementById('itemSelect');
+            const billSelect = document.getElementById('billItemSelect');
+            
+            if (!deliverySelect || !billSelect) return;
+            
+            // Clear existing options
+            deliverySelect.innerHTML = '<option value="">-- Select Item --</option>';
+            billSelect.innerHTML = '<option value="">-- Select Item --</option>';
+            
+            if (inventoryData.length === 0) return;
+            
+            // Get unique items
+            const uniqueItems = new Map();
+            
+            inventoryData.forEach(item => {
+                const itemName = item['Item Description'] || item.Item;
+                const itemPrice = item['Selling Price'] || 0;
+                
+                if (itemName && itemName.trim() !== '' && !uniqueItems.has(itemName)) {
+                    uniqueItems.set(itemName, itemPrice);
+                }
+            });
+            
+            // Add to dropdowns
+            uniqueItems.forEach((price, name) => {
+                const deliveryOption = document.createElement('option');
+                deliveryOption.value = name;
+                deliveryOption.textContent = name;
+                deliverySelect.appendChild(deliveryOption);
+                
+                const billOption = document.createElement('option');
+                billOption.value = `${name}|${price}`;
+                billOption.textContent = `${name} (Price: ${formatCurrency(price)})`;
+                billSelect.appendChild(billOption);
+            });
+        }
+        
+        function updateCounters() {
+            // Find max challan and bill numbers from data
+            inventoryData.forEach(item => {
+                if (item['BILL NO']) {
+                    const match = item['BILL NO'].toString().match(/\d+/);
+                    if (match) {
+                        const num = parseInt(match[0]);
+                        if (num > lastBillNo) lastBillNo = num;
+                    }
+                }
+            });
+        }
+        
+        function formatCurrency(amount) {
+            const num = parseFloat(amount) || 0;
+            return '$' + num.toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+        
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            try {
+                const date = new Date(dateString);
+                return date.toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                });
+            } catch (e) {
+                return dateString;
+            }
+        }
+        
+        function getStatusClass(status) {
+            const statusStr = (status || '').toLowerCase();
+            if (statusStr.includes('deliver') || statusStr.includes('complete')) {
+                return 'status-delivered';
+            } else if (statusStr.includes('cancel')) {
+                return 'status-cancelled';
+            } else {
+                return 'status-pending';
+            }
+        }
+        
+        function getBillStatusClass(status) {
+            const statusStr = (status || '').toLowerCase();
+            if (statusStr.includes('paid')) {
+                return 'status-delivered';
+            } else if (statusStr.includes('cancel')) {
+                return 'status-cancelled';
+            } else {
+                return 'status-pending';
+            }
+        }
+        
+        function exportToExcel() {
+            if (inventoryData.length === 0) {
+                alert('No data to export');
+                return;
+            }
+            
+            try {
+                const ws = XLSX.utils.json_to_sheet(inventoryData);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Inventory Data");
+                XLSX.writeFile(wb, "inventory_data.xlsx");
+            } catch (error) {
+                console.error('Export error:', error);
+                alert('Error exporting to Excel');
+            }
+        }
+        
+        function printSupplierReport() {
+            window.print();
+        }
+    </script>
+</body>
+</html>
