@@ -3,10 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inventory Management Dashboard</title>
+    <title>Inventory Management System</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <style>
         :root {
             --primary: #2c3e50;
@@ -187,6 +189,37 @@
             color: var(--primary);
         }
         
+        .filters {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .filter-group label {
+            font-size: 0.9rem;
+            color: #666;
+            font-weight: 500;
+        }
+        
+        .filter-group select, .filter-group input {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 0.9rem;
+        }
+        
+        .section-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
         .section-actions button {
             padding: 8px 15px;
             background: var(--secondary);
@@ -283,7 +316,7 @@
             background: white;
             border-radius: 10px;
             width: 90%;
-            max-width: 800px;
+            max-width: 900px;
             max-height: 90vh;
             overflow-y: auto;
         }
@@ -335,7 +368,7 @@
         
         .form-row {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 20px;
         }
         
@@ -394,7 +427,15 @@
         
         .item-row {
             display: grid;
-            grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+            grid-template-columns: 1fr 2fr 1fr 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+        
+        .bill-item-row {
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr 1fr 1fr 1fr;
             gap: 10px;
             margin-bottom: 10px;
             align-items: center;
@@ -426,28 +467,37 @@
             margin-top: 10px;
         }
         
-        .doc-preview {
+        .address-box {
             background: #f8f9fa;
-            border: 1px dashed #ddd;
+            border: 1px solid #ddd;
             border-radius: 5px;
-            padding: 20px;
-            margin-top: 20px;
+            padding: 15px;
+            margin: 10px 0;
         }
         
-        .doc-header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        
-        .doc-header h2 {
+        .address-box h4 {
+            margin-bottom: 10px;
             color: var(--primary);
-            margin-bottom: 5px;
         }
         
-        .doc-details {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 30px;
+        .signature-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 40px;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 2px solid #ddd;
+        }
+        
+        .signature-box {
+            text-align: center;
+        }
+        
+        .signature-line {
+            width: 200px;
+            height: 1px;
+            background: #000;
+            margin: 40px auto 10px;
         }
         
         footer {
@@ -478,6 +528,19 @@
             display: block;
         }
         
+        .numeric {
+            text-align: right;
+        }
+        
+        .amount-in-words {
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 20px;
+            font-style: italic;
+        }
+        
         @media (max-width: 768px) {
             .stats-cards {
                 grid-template-columns: 1fr;
@@ -488,6 +551,10 @@
             }
             
             .item-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .bill-item-row {
                 grid-template-columns: 1fr;
             }
             
@@ -503,6 +570,25 @@
             th, td {
                 padding: 8px;
                 font-size: 0.8rem;
+            }
+            
+            .signature-section {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #delivery-analysis-table, #delivery-analysis-table * {
+                visibility: visible;
+            }
+            #delivery-analysis-table {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
             }
         }
     </style>
@@ -528,8 +614,8 @@
             <button class="tab-btn" onclick="openTab('orders')">
                 <i class="fas fa-clipboard-list"></i> All Orders
             </button>
-            <button class="tab-btn" onclick="openTab('suppliers')">
-                <i class="fas fa-truck"></i> Suppliers
+            <button class="tab-btn" onclick="openTab('delivery-analysis')">
+                <i class="fas fa-truck"></i> Delivery Analysis
             </button>
             <button class="tab-btn" onclick="showDeliveryModal()">
                 <i class="fas fa-file-export"></i> Delivery Challan
@@ -549,16 +635,16 @@
                         <i class="fas fa-shopping-cart"></i>
                     </div>
                     <h3>Total Purchase</h3>
-                    <div class="value" id="total-purchase">$0.00</div>
+                    <div class="value" id="total-purchase">0.00</div>
                     <div class="change positive" id="purchase-change">Loading...</div>
                 </div>
                 
                 <div class="card sales-card">
                     <div class="card-icon">
-                        <i class="fas fa-rupee-sign"></i>
+                        <i class="fas fa-taka-sign"></i>
                     </div>
                     <h3>Total Sales</h3>
-                    <div class="value" id="total-sales">$0.00</div>
+                    <div class="value" id="total-sales">0.00 TK</div>
                     <div class="change positive" id="sales-change">Loading...</div>
                 </div>
                 
@@ -567,7 +653,7 @@
                         <i class="fas fa-chart-line"></i>
                     </div>
                     <h3>Total Profit</h3>
-                    <div class="value" id="total-profit">$0.00</div>
+                    <div class="value" id="total-profit">0.00</div>
                     <div class="change positive" id="profit-change">Loading...</div>
                 </div>
             </div>
@@ -583,15 +669,6 @@
             
             <div class="dashboard-section">
                 <div class="section-header">
-                    <h2>Top Suppliers</h2>
-                </div>
-                <div class="chart-container">
-                    <canvas id="supplierChart"></canvas>
-                </div>
-            </div>
-            
-            <div class="dashboard-section">
-                <div class="section-header">
                     <h2>Recent Orders</h2>
                 </div>
                 <div class="supplier-table">
@@ -599,16 +676,17 @@
                         <thead>
                             <tr>
                                 <th>PO Number</th>
-                                <th>Supplier</th>
-                                <th>Item</th>
+                                <th>PR No</th>
+                                <th>Delivery To</th>
+                                <th>Item Description</th>
                                 <th>Qty</th>
-                                <th>Amount</th>
-                                <th>Status</th>
+                                <th class="numeric">Bill Amount</th>
+                                <th>Delivery Status</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td colspan="6" class="loading">
+                                <td colspan="7" class="loading">
                                     <i class="fas fa-spinner fa-spin"></i><br>
                                     Loading data from Google Sheets...
                                 </td>
@@ -623,34 +701,59 @@
         <div id="orders" class="tab-content">
             <div class="dashboard-section">
                 <div class="section-header">
-                    <h2>All Purchase Orders</h2>
+                    <h2>All Orders</h2>
                     <div class="section-actions">
                         <button onclick="exportToExcel()">
                             <i class="fas fa-file-export"></i> Export Excel
                         </button>
                     </div>
                 </div>
+                
+                <div class="filters">
+                    <div class="filter-group">
+                        <label for="statusFilter">Delivery Status</label>
+                        <select id="statusFilter" onchange="filterOrders()">
+                            <option value="">All Status</option>
+                            <option value="Delivered">Delivered</option>
+                            <option value="Pending">Pending</option>
+                            <option value="Cancelled">Cancelled</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="dateFilter">Month-Year</label>
+                        <input type="text" id="dateFilter" placeholder="Select Month" onchange="filterOrders()">
+                    </div>
+                    <div class="filter-group">
+                        <label for="searchFilter">Search</label>
+                        <input type="text" id="searchFilter" placeholder="Search..." onkeyup="filterOrders()">
+                    </div>
+                </div>
+                
                 <div class="supplier-table">
                     <table id="all-orders">
                         <thead>
                             <tr>
+                                <th>SL</th>
                                 <th>Date</th>
                                 <th>PO Number</th>
                                 <th>PR No</th>
                                 <th>Item</th>
-                                <th>Supplier</th>
+                                <th>Code</th>
+                                <th>Item Description</th>
+                                <th>Delivery To</th>
                                 <th>Qty</th>
-                                <th>Purchase Price</th>
-                                <th>Selling Price</th>
-                                <th>Purchase Amt</th>
-                                <th>Selling Amt</th>
-                                <th>Status</th>
-                                <th>Bill Status</th>
+                                <th class="numeric">Purchase Price</th>
+                                <th class="numeric">Selling Price</th>
+                                <th class="numeric">Purchase Amount</th>
+                                <th class="numeric">Selling Amount</th>
+                                <th>Delivery Date</th>
+                                <th>Delivery Status</th>
+                                <th>Bill No</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td colspan="12" class="loading">
+                                <td colspan="16" class="loading">
                                     <i class="fas fa-spinner fa-spin"></i><br>
                                     Loading data from Google Sheets...
                                 </td>
@@ -661,34 +764,35 @@
             </div>
         </div>
         
-        <!-- Suppliers Tab -->
-        <div id="suppliers" class="tab-content">
+        <!-- Delivery Analysis Tab -->
+        <div id="delivery-analysis" class="tab-content">
             <div class="dashboard-section">
                 <div class="section-header">
-                    <h2>Supplier Wise Analysis</h2>
+                    <h2>Delivery Location Analysis</h2>
                     <div class="section-actions">
-                        <button onclick="printSupplierReport()">
+                        <button onclick="printDeliveryAnalysis()">
                             <i class="fas fa-print"></i> Print Report
                         </button>
                     </div>
                 </div>
                 <div class="supplier-table">
-                    <table id="supplier-analysis">
+                    <table id="delivery-analysis-table">
                         <thead>
                             <tr>
-                                <th>Supplier</th>
-                                <th>Total Purchase</th>
-                                <th>Total Sales</th>
-                                <th>Profit</th>
+                                <th>Delivery To</th>
+                                <th>Total Orders</th>
+                                <th>Total Qty</th>
+                                <th class="numeric">Total Purchase</th>
+                                <th class="numeric">Total Sales</th>
+                                <th class="numeric">Profit</th>
                                 <th>Profit %</th>
-                                <th>Orders</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td colspan="6" class="loading">
+                                <td colspan="7" class="loading">
                                     <i class="fas fa-spinner fa-spin"></i><br>
-                                    Loading supplier data...
+                                    Loading delivery data...
                                 </td>
                             </tr>
                         </tbody>
@@ -717,17 +821,44 @@
                     </div>
                 </div>
                 
-                <div class="form-group">
-                    <label>Select Item from Inventory</label>
-                    <select id="itemSelect" onchange="addSelectedItem()">
-                        <option value="">-- Select Item --</option>
-                    </select>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Select PO Number</label>
+                        <select id="poSelect" onchange="updatePRNoAndDeliveryTo()">
+                            <option value="">-- Select PO Number --</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>PR No</label>
+                        <input type="text" id="prNo" readonly>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Delivery To</label>
+                        <select id="deliveryToSelect" onchange="updateDeliveryAddress()">
+                            <option value="">-- Select Delivery To --</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Delivery Address</label>
+                        <textarea id="deliveryAddress" rows="3" readonly></textarea>
+                    </div>
+                </div>
+                
+                <div class="address-box">
+                    <h4>From MUDI</h4>
+                    <p>Location: House#2, Road No #96, Gulshan-2</p>
+                    <input type="text" id="fromNumber" placeholder="Enter Contact Number">
                 </div>
                 
                 <h4>Items List</h4>
                 <div id="deliveryItems">
                     <div class="item-row">
+                        <input type="text" placeholder="Item" class="item-name" required>
                         <input type="text" placeholder="Item Description" class="item-desc" required>
+                        <input type="text" placeholder="Unit" class="item-unit" required>
                         <input type="number" placeholder="Quantity" class="item-qty" min="1" value="1" required>
                         <button type="button" class="remove-item" onclick="removeDeliveryItem(this)">&times;</button>
                     </div>
@@ -739,7 +870,7 @@
                 
                 <div class="form-actions">
                     <button type="button" class="btn btn-secondary" onclick="closeDeliveryModal()">Cancel</button>
-                    <button type="button" class="btn btn-success" onclick="generateDelivery()">Generate Challan</button>
+                    <button type="button" class="btn btn-success" onclick="generateDelivery()">Generate & Print Challan</button>
                 </div>
             </div>
         </div>
@@ -755,29 +886,47 @@
             <div class="modal-body">
                 <div class="form-row">
                     <div class="form-group">
+                        <label>Select Delivery Challan</label>
+                        <select id="challanSelect" onchange="loadBillFromChallan()">
+                            <option value="">-- Select Delivery Challan --</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
                         <label>Bill No</label>
                         <input type="text" id="billNo" value="BILL-1001" readonly>
                     </div>
+                </div>
+                
+                <div class="form-row">
                     <div class="form-group">
                         <label>Date</label>
                         <input type="date" id="billDate">
                     </div>
+                    <div class="form-group">
+                        <label>PR No</label>
+                        <input type="text" id="billPRNo" readonly>
+                    </div>
                 </div>
                 
-                <div class="form-group">
-                    <label>Select Item from Inventory</label>
-                    <select id="billItemSelect" onchange="addSelectedBillItem()">
-                        <option value="">-- Select Item --</option>
-                    </select>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Delivery To</label>
+                        <input type="text" id="billDeliveryTo" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>Delivery Address</label>
+                        <textarea id="billDeliveryAddress" rows="2" readonly></textarea>
+                    </div>
                 </div>
                 
                 <h4>Items List</h4>
                 <div id="billItems">
-                    <div class="item-row">
+                    <div class="bill-item-row">
+                        <input type="text" placeholder="Item" class="bill-item-name" required>
                         <input type="text" placeholder="Item Description" class="bill-item-desc" required>
-                        <input type="number" placeholder="Quantity" class="bill-item-qty" min="1" value="1" required>
-                        <input type="number" placeholder="Selling Price" class="bill-item-price" min="0" step="0.01" required>
-                        <input type="text" placeholder="Total" class="bill-item-total" readonly>
+                        <input type="number" placeholder="Qty" class="bill-item-qty" min="1" value="1" required oninput="calculateItemTotal(this)">
+                        <input type="number" placeholder="Rate" class="bill-item-rate" min="0" step="0.01" required oninput="calculateItemTotal(this)">
+                        <input type="text" placeholder="Amount" class="bill-item-total" readonly>
                         <button type="button" class="remove-item" onclick="removeBillItem(this)">&times;</button>
                     </div>
                 </div>
@@ -788,16 +937,8 @@
                 
                 <div class="form-row" style="margin-top: 20px;">
                     <div class="form-group">
-                        <label>Sub Total</label>
-                        <input type="text" id="subTotal" value="0.00" readonly>
-                    </div>
-                    <div class="form-group">
-                        <label>Tax (%)</label>
-                        <input type="number" id="taxPercent" value="18" min="0" max="100">
-                    </div>
-                    <div class="form-group">
-                        <label>Tax Amount</label>
-                        <input type="text" id="taxAmount" value="0.00" readonly>
+                        <label>Total Quantity</label>
+                        <input type="text" id="totalQty" value="0" readonly>
                     </div>
                     <div class="form-group">
                         <label>Total Amount</label>
@@ -805,9 +946,13 @@
                     </div>
                 </div>
                 
+                <div id="amountInWords" class="amount-in-words" style="display: none;">
+                    Amount in Words: <span id="amountWords"></span>
+                </div>
+                
                 <div class="form-actions">
                     <button type="button" class="btn btn-secondary" onclick="closeBillModal()">Cancel</button>
-                    <button type="button" class="btn btn-success" onclick="generateBill()">Generate Bill</button>
+                    <button type="button" class="btn btn-success" onclick="generateBill()">Generate & Print Bill</button>
                 </div>
             </div>
         </div>
@@ -822,14 +967,14 @@
         // CONFIGURATION
         // ============================================
         const SPREADSHEET_ID = '1BO2-AgJxNF0jp2l6AS14P8mBr8ChqEwHfL6hChFfrSE';
-        const SHEET_NAME = 'Products'; // Change if your sheet has a different name
         
         // ============================================
         // GLOBAL VARIABLES
         // ============================================
         let inventoryData = [];
         let monthlyChart = null;
-        let supplierChart = null;
+        let deliveryChallans = JSON.parse(localStorage.getItem('deliveryChallans')) || [];
+        let bills = JSON.parse(localStorage.getItem('bills')) || [];
         let lastChallanNo = 1000;
         let lastBillNo = 1000;
         
@@ -842,12 +987,58 @@
             document.getElementById('deliveryDate').value = today;
             document.getElementById('billDate').value = today;
             
-            // Load data from Google Sheets
+            // Initialize date picker for month filter
+            flatpickr("#dateFilter", {
+                plugins: [new monthSelectPlugin({
+                    shorthand: true,
+                    dateFormat: "F Y",
+                    altFormat: "F Y",
+                    theme: "light"
+                })],
+                onChange: function(selectedDates, dateStr, instance) {
+                    filterOrders();
+                }
+            });
+            
+            // Load data
             loadDataFromGoogleSheets();
             
-            // Setup event listeners
-            document.getElementById('taxPercent').addEventListener('input', calculateBillTotal);
+            // Load saved data
+            loadSavedData();
         });
+        
+        // Month select plugin for flatpickr
+        class monthSelectPlugin {
+            constructor(config) {
+                this.config = config;
+            }
+            
+            init(fp) {
+                this.fp = fp;
+                this.createMonthNav();
+                fp.loadedPlugins.push("monthSelect");
+            }
+            
+            createMonthNav() {
+                const self = this;
+                const container = document.createElement("div");
+                container.className = "flatpickr-monthSelect-months";
+                
+                for (let i = 0; i < 12; i++) {
+                    const month = document.createElement("div");
+                    month.className = "flatpickr-monthSelect-month";
+                    month.textContent = this.fp.l10n.months.shorthand[i];
+                    month.addEventListener("click", function() {
+                        const date = new Date(self.fp.currentYear, i, 1);
+                        self.fp.setDate(date, true);
+                        self.fp.close();
+                    });
+                    container.appendChild(month);
+                }
+                
+                this.fp.calendarContainer.appendChild(container);
+            }
+        }
         
         // ============================================
         // GOOGLE SHEETS DATA LOADING
@@ -856,20 +1047,60 @@
             showLoading(true);
             
             try {
-                // Since we cannot directly access Google Sheets API from browser without CORS issues,
-                // We'll use Google Sheets publishing feature or Google Apps Script
-                // Method 1: Using Google Sheets JSON API (requires sheet to be published)
-                const data = await fetchGoogleSheetsData();
+                // Method 1: Using Google Sheets API with API key
+                // You need to enable Google Sheets API and get an API key
+                const API_KEY = ''; // Add your API key here
                 
-                if (data && data.length > 0) {
-                    inventoryData = data;
-                    updateAllDisplays();
-                    showLoading(false);
+                if (!API_KEY) {
+                    console.warn('No API key provided. Using alternative method.');
+                    inventoryData = await loadDataAlternative();
                 } else {
-                    // Fallback: Try to parse from HTML if JSON method fails
-                    console.log('Trying alternative method to load data...');
-                    await loadDataAlternative();
+                    const range = 'A:Z';
+                    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/Products!${range}?key=${API_KEY}`;
+                    
+                    const response = await fetch(url);
+                    const result = await response.json();
+                    
+                    if (!result.values || result.values.length === 0) {
+                        throw new Error('No data found in sheet');
+                    }
+                    
+                    const headers = result.values[0];
+                    const data = [];
+                    
+                    for (let i = 1; i < result.values.length; i++) {
+                        const row = result.values[i];
+                        const rowData = {};
+                        
+                        headers.forEach((header, index) => {
+                            rowData[header.trim()] = index < row.length ? row[index] : '';
+                        });
+                        
+                        // Convert numeric fields
+                        ['Qty', 'Purchase_Price', 'Selling_Price', 'Purchase_Amount', 
+                         'Selling_Amount', 'Bill_Amount'].forEach(field => {
+                            if (rowData[field] !== undefined && rowData[field] !== '') {
+                                rowData[field] = parseFloat(rowData[field]) || 0;
+                            }
+                        });
+                        
+                        // Ensure SL is a number
+                        if (rowData['SL']) {
+                            rowData['SL'] = parseInt(rowData['SL']) || i;
+                        } else {
+                            rowData['SL'] = i;
+                        }
+                        
+                        data.push(rowData);
+                    }
+                    
+                    inventoryData = data;
+                    console.log(`Loaded ${data.length} records from Google Sheets`);
                 }
+                
+                updateAllDisplays();
+                showLoading(false);
+                
             } catch (error) {
                 console.error('Error loading data:', error);
                 showLoading(false);
@@ -877,85 +1108,15 @@
             }
         }
         
-        async function fetchGoogleSheetsData() {
-            // Method 1: Using Google Sheets API v4 with API key
-            // You need to enable Google Sheets API and get an API key
-            const API_KEY = ''; // Add your API key here
-            
-            if (!API_KEY) {
-                console.warn('No API key provided. Using alternative method.');
-                return await loadDataAlternative();
-            }
-            
-            const range = 'A:Z'; // Read all columns
-            const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME}!${range}?key=${API_KEY}`;
-            
-            try {
-                const response = await fetch(url);
-                const result = await response.json();
-                
-                if (!result.values || result.values.length === 0) {
-                    throw new Error('No data found in sheet');
-                }
-                
-                const headers = result.values[0];
-                const data = [];
-                
-                for (let i = 1; i < result.values.length; i++) {
-                    const row = result.values[i];
-                    const rowData = {};
-                    
-                    headers.forEach((header, index) => {
-                        rowData[header.trim()] = index < row.length ? row[index] : '';
-                    });
-                    
-                    // Convert numeric fields
-                    ['Qty', 'Purchase Price', 'Selling Price', 'Purchase Amount', 'Selling Amount', 'Amount'].forEach(field => {
-                        if (rowData[field] !== undefined && rowData[field] !== '') {
-                            rowData[field] = parseFloat(rowData[field]) || 0;
-                        }
-                    });
-                    
-                    data.push(rowData);
-                }
-                
-                console.log(`Loaded ${data.length} records from Google Sheets`);
-                return data;
-            } catch (error) {
-                console.error('Google Sheets API error:', error);
-                return await loadDataAlternative();
-            }
-        }
-        
         async function loadDataAlternative() {
-            // Method 2: Using Google Sheets publishing as CSV
-            // First, you need to publish your sheet: File > Share > Publish to web
-            // Choose CSV format and copy the link
-            const csvUrl = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=${SHEET_NAME}`;
-            
+            // Alternative method using CSV export
             try {
+                const csvUrl = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=Products`;
                 const response = await fetch(csvUrl);
                 const csvText = await response.text();
-                const data = parseCSV(csvText);
-                return data;
+                return parseCSV(csvText);
             } catch (error) {
                 console.error('CSV method failed:', error);
-                
-                // Method 3: Using Google Apps Script Web App
-                // You need to deploy a Google Apps Script as a web app
-                const scriptUrl = ''; // Add your Google Apps Script web app URL here
-                
-                if (scriptUrl) {
-                    try {
-                        const response = await fetch(scriptUrl);
-                        const data = await response.json();
-                        return data;
-                    } catch (scriptError) {
-                        console.error('Google Apps Script method failed:', scriptError);
-                        return [];
-                    }
-                }
-                
                 return [];
             }
         }
@@ -977,9 +1138,15 @@
                     rowData[header] = index < values.length ? values[index] : '';
                     
                     // Convert numeric fields
-                    if (['Qty', 'Purchase Price', 'Selling Price', 'Purchase Amount', 'Selling Amount', 'Amount'].includes(header)) {
+                    if (['Qty', 'Purchase_Price', 'Selling_Price', 'Purchase_Amount', 
+                         'Selling_Amount', 'Bill_Amount', 'SL'].includes(header)) {
                         const numValue = parseFloat(rowData[header]);
                         rowData[header] = isNaN(numValue) ? 0 : numValue;
+                    }
+                    
+                    // Ensure SL is a number
+                    if (header === 'SL' && (!rowData[header] || rowData[header] === '')) {
+                        rowData[header] = i;
                     }
                 });
                 
@@ -996,17 +1163,17 @@
             updateDashboard();
             updateRecentOrders();
             updateAllOrdersTable();
-            updateSupplierAnalysis();
-            updateCharts();
-            populateItemDropdowns();
-            updateCounters();
+            updateDeliveryAnalysis();
+            updateMonthlyChart();
+            populateDeliveryDropdowns();
+            updateChallanSelect();
         }
         
         function updateDashboard() {
             if (inventoryData.length === 0) {
-                document.getElementById('total-purchase').textContent = '$0.00';
-                document.getElementById('total-sales').textContent = '$0.00';
-                document.getElementById('total-profit').textContent = '$0.00';
+                document.getElementById('total-purchase').textContent = '0.00';
+                document.getElementById('total-sales').textContent = '0.00 TK';
+                document.getElementById('total-profit').textContent = '0.00';
                 return;
             }
             
@@ -1014,10 +1181,10 @@
             let totalSales = 0;
             
             inventoryData.forEach(item => {
-                const purchaseAmt = parseFloat(item['Purchase Amount']) || 
-                                   (parseFloat(item['Purchase Price']) || 0) * (parseFloat(item['Qty']) || 0);
-                const salesAmt = parseFloat(item['Selling Amount']) || 
-                                (parseFloat(item['Selling Price']) || 0) * (parseFloat(item['Qty']) || 0);
+                const purchaseAmt = parseFloat(item['Purchase_Amount']) || 
+                                   (parseFloat(item['Purchase_Price']) || 0) * (parseFloat(item['Qty']) || 0);
+                const salesAmt = parseFloat(item['Selling_Amount']) || 
+                                (parseFloat(item['Selling_Price']) || 0) * (parseFloat(item['Qty']) || 0);
                 
                 totalPurchase += purchaseAmt;
                 totalSales += salesAmt;
@@ -1026,9 +1193,9 @@
             const totalProfit = totalSales - totalPurchase;
             const profitMargin = totalPurchase > 0 ? (totalProfit / totalPurchase * 100).toFixed(2) : 0;
             
-            document.getElementById('total-purchase').textContent = formatCurrency(totalPurchase);
-            document.getElementById('total-sales').textContent = formatCurrency(totalSales);
-            document.getElementById('total-profit').textContent = formatCurrency(totalProfit);
+            document.getElementById('total-purchase').textContent = formatNumber(totalPurchase);
+            document.getElementById('total-sales').textContent = formatNumber(totalSales) + ' TK';
+            document.getElementById('total-profit').textContent = formatNumber(totalProfit);
             
             document.getElementById('purchase-change').textContent = `Margin: ${profitMargin}%`;
             document.getElementById('sales-change').textContent = `Based on ${inventoryData.length} records`;
@@ -1045,25 +1212,26 @@
             tableBody.innerHTML = '';
             
             if (inventoryData.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="6">No data available</td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="7">No data available</td></tr>';
                 return;
             }
             
             // Get recent 10 orders
             const recentOrders = [...inventoryData]
-                .sort((a, b) => new Date(b.Date || 0) - new Date(a.Date || 0))
+                .sort((a, b) => new Date(b['Date'] || 0) - new Date(a['Date'] || 0))
                 .slice(0, 10);
             
             recentOrders.forEach(order => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td>${order['PO Number'] || 'N/A'}</td>
-                    <td>${order.Supplier || 'N/A'}</td>
-                    <td>${order['Item Description'] || order.Item || 'N/A'}</td>
-                    <td>${order.Qty || 0}</td>
-                    <td>${formatCurrency(order['Selling Amount'] || 0)}</td>
-                    <td><span class="status-badge ${getStatusClass(order['Delivery Status'])}">
-                        ${order['Delivery Status'] || 'Pending'}
+                    <td>${order['PO_Number'] || 'N/A'}</td>
+                    <td>${order['PR_No'] || 'N/A'}</td>
+                    <td>${order['Delivery_To'] || 'N/A'}</td>
+                    <td>${order['Item_Description'] || 'N/A'}</td>
+                    <td>${order['Qty'] || 0}</td>
+                    <td class="numeric">${formatNumber(order['Bill_Amount'] || 0)}</td>
+                    <td><span class="status-badge ${getStatusClass(order['Delivery_Status'])}">
+                        ${order['Delivery_Status'] || 'Pending'}
                     </span></td>
                 `;
                 tableBody.appendChild(row);
@@ -1075,96 +1243,143 @@
             tableBody.innerHTML = '';
             
             if (inventoryData.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="12">No data available</td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="16">No data available</td></tr>';
                 return;
             }
             
             inventoryData.forEach(order => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td>${formatDate(order.Date)}</td>
-                    <td>${order['PO Number'] || 'N/A'}</td>
-                    <td>${order['PR No'] || 'N/A'}</td>
-                    <td>${order['Item Description'] || order.Item || 'N/A'}</td>
-                    <td>${order.Supplier || 'N/A'}</td>
-                    <td>${order.Qty || 0}</td>
-                    <td>${formatCurrency(order['Purchase Price'] || 0)}</td>
-                    <td>${formatCurrency(order['Selling Price'] || 0)}</td>
-                    <td>${formatCurrency(order['Purchase Amount'] || 0)}</td>
-                    <td>${formatCurrency(order['Selling Amount'] || 0)}</td>
-                    <td><span class="status-badge ${getStatusClass(order['Delivery Status'])}">
-                        ${order['Delivery Status'] || 'Pending'}
+                    <td>${order['SL'] || ''}</td>
+                    <td>${formatDate(order['Date'])}</td>
+                    <td>${order['PO_Number'] || 'N/A'}</td>
+                    <td>${order['PR_No'] || 'N/A'}</td>
+                    <td>${order['Item'] || 'N/A'}</td>
+                    <td>${order['Code'] || 'N/A'}</td>
+                    <td>${order['Item_Description'] || 'N/A'}</td>
+                    <td>${order['Delivery_To'] || 'N/A'}</td>
+                    <td>${order['Qty'] || 0}</td>
+                    <td class="numeric">${formatNumber(order['Purchase_Price'] || 0)}</td>
+                    <td class="numeric">${formatNumber(order['Selling_Price'] || 0)}</td>
+                    <td class="numeric">${formatNumber(order['Purchase_Amount'] || 0)}</td>
+                    <td class="numeric">${formatNumber(order['Selling_Amount'] || 0)}</td>
+                    <td>${formatDate(order['Delivery_Date'])}</td>
+                    <td><span class="status-badge ${getStatusClass(order['Delivery_Status'])}">
+                        ${order['Delivery_Status'] || 'Pending'}
                     </span></td>
-                    <td><span class="status-badge ${getBillStatusClass(order['Bill Status'])}">
-                        ${order['Bill Status'] || 'Pending'}
-                    </span></td>
+                    <td>${order['Bill_No'] || 'N/A'}</td>
                 `;
                 tableBody.appendChild(row);
             });
         }
         
-        function updateSupplierAnalysis() {
-            const tableBody = document.querySelector('#supplier-analysis tbody');
+        function filterOrders() {
+            const statusFilter = document.getElementById('statusFilter').value;
+            const dateFilter = document.getElementById('dateFilter').value;
+            const searchFilter = document.getElementById('searchFilter').value.toLowerCase();
+            
+            const tableBody = document.querySelector('#all-orders tbody');
+            const rows = tableBody.querySelectorAll('tr');
+            
+            rows.forEach(row => {
+                if (row.classList.contains('loading')) return;
+                
+                const statusCell = row.querySelector('td:nth-child(15)');
+                const dateCell = row.querySelector('td:nth-child(2)');
+                const rowText = row.textContent.toLowerCase();
+                
+                let showRow = true;
+                
+                // Filter by status
+                if (statusFilter && statusCell) {
+                    const status = statusCell.textContent.trim();
+                    if (status !== statusFilter) {
+                        showRow = false;
+                    }
+                }
+                
+                // Filter by month-year
+                if (dateFilter && dateCell) {
+                    const date = new Date(dateCell.textContent);
+                    const filterDate = new Date(dateFilter);
+                    const rowMonthYear = `${date.getMonth()+1}/${date.getFullYear()}`;
+                    const filterMonthYear = `${filterDate.getMonth()+1}/${filterDate.getFullYear()}`;
+                    
+                    if (rowMonthYear !== filterMonthYear) {
+                        showRow = false;
+                    }
+                }
+                
+                // Filter by search
+                if (searchFilter && !rowText.includes(searchFilter)) {
+                    showRow = false;
+                }
+                
+                row.style.display = showRow ? '' : 'none';
+            });
+        }
+        
+        function updateDeliveryAnalysis() {
+            const tableBody = document.querySelector('#delivery-analysis-table tbody');
             tableBody.innerHTML = '';
             
             if (inventoryData.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="6">No data available</td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="7">No data available</td></tr>';
                 return;
             }
             
-            // Group by supplier
-            const supplierMap = new Map();
+            // Group by Delivery_To
+            const deliveryMap = new Map();
             
             inventoryData.forEach(order => {
-                const supplier = order.Supplier || 'Unknown';
-                const purchaseAmt = parseFloat(order['Purchase Amount']) || 
-                                   (parseFloat(order['Purchase Price']) || 0) * (parseFloat(order.Qty) || 0);
-                const salesAmt = parseFloat(order['Selling Amount']) || 
-                                (parseFloat(order['Selling Price']) || 0) * (parseFloat(order.Qty) || 0);
+                const deliveryTo = order['Delivery_To'] || 'Unknown';
+                const purchaseAmt = parseFloat(order['Purchase_Amount']) || 
+                                   (parseFloat(order['Purchase_Price']) || 0) * (parseFloat(order['Qty']) || 0);
+                const salesAmt = parseFloat(order['Selling_Amount']) || 
+                                (parseFloat(order['Selling_Price']) || 0) * (parseFloat(order['Qty']) || 0);
+                const qty = parseFloat(order['Qty']) || 0;
                 
-                if (!supplierMap.has(supplier)) {
-                    supplierMap.set(supplier, {
+                if (!deliveryMap.has(deliveryTo)) {
+                    deliveryMap.set(deliveryTo, {
                         purchase: 0,
                         sales: 0,
+                        qty: 0,
                         count: 0,
                         profit: 0
                     });
                 }
                 
-                const data = supplierMap.get(supplier);
+                const data = deliveryMap.get(deliveryTo);
                 data.purchase += purchaseAmt;
                 data.sales += salesAmt;
+                data.qty += qty;
                 data.profit = data.sales - data.purchase;
                 data.count += 1;
             });
             
             // Convert to array and sort by sales
-            const supplierArray = Array.from(supplierMap.entries())
+            const deliveryArray = Array.from(deliveryMap.entries())
                 .map(([name, data]) => ({ name, ...data }))
                 .sort((a, b) => b.sales - a.sales);
             
             // Populate table
-            supplierArray.forEach(supplier => {
-                const profitPercent = supplier.purchase > 0 ? 
-                    ((supplier.profit / supplier.purchase) * 100).toFixed(2) : '0.00';
-                const profitClass = supplier.profit >= 0 ? 'positive' : 'negative';
+            deliveryArray.forEach(delivery => {
+                const profitPercent = delivery.purchase > 0 ? 
+                    ((delivery.profit / delivery.purchase) * 100).toFixed(2) : '0.00';
+                const profitClass = delivery.profit >= 0 ? 'positive' : 'negative';
                 
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td><strong>${supplier.name}</strong></td>
-                    <td>${formatCurrency(supplier.purchase)}</td>
-                    <td>${formatCurrency(supplier.sales)}</td>
-                    <td class="${profitClass}">${formatCurrency(supplier.profit)}</td>
+                    <td><strong>${delivery.name}</strong></td>
+                    <td>${delivery.count}</td>
+                    <td>${delivery.qty}</td>
+                    <td class="numeric">${formatNumber(delivery.purchase)}</td>
+                    <td class="numeric">${formatNumber(delivery.sales)}</td>
+                    <td class="numeric ${profitClass}">${formatNumber(delivery.profit)}</td>
                     <td class="${profitClass}">${profitPercent}%</td>
-                    <td>${supplier.count}</td>
                 `;
                 tableBody.appendChild(row);
             });
-        }
-        
-        function updateCharts() {
-            updateMonthlyChart();
-            updateSupplierChart();
         }
         
         function updateMonthlyChart() {
@@ -1214,71 +1429,7 @@
                             beginAtZero: true,
                             ticks: {
                                 callback: function(value) {
-                                    return '$' + value.toLocaleString();
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        }
-        
-        function updateSupplierChart() {
-            const ctx = document.getElementById('supplierChart');
-            if (!ctx) return;
-            
-            if (supplierChart) {
-                supplierChart.destroy();
-            }
-            
-            // Get top 5 suppliers by sales
-            const supplierMap = new Map();
-            inventoryData.forEach(order => {
-                const supplier = order.Supplier || 'Unknown';
-                const sales = parseFloat(order['Selling Amount']) || 
-                             (parseFloat(order['Selling Price']) || 0) * (parseFloat(order.Qty) || 0);
-                
-                if (supplierMap.has(supplier)) {
-                    supplierMap.set(supplier, supplierMap.get(supplier) + sales);
-                } else {
-                    supplierMap.set(supplier, sales);
-                }
-            });
-            
-            const topSuppliers = Array.from(supplierMap.entries())
-                .sort((a, b) => b[1] - a[1])
-                .slice(0, 5);
-            
-            supplierChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: topSuppliers.map(s => s[0]),
-                    datasets: [{
-                        label: 'Sales Amount',
-                        data: topSuppliers.map(s => s[1]),
-                        backgroundColor: [
-                            '#3498db', '#2ecc71', '#f39c12', '#e74c3c', '#9b59b6'
-                        ],
-                        borderColor: [
-                            '#2980b9', '#27ae60', '#d68910', '#c0392b', '#8e44ad'
-                        ],
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                callback: function(value) {
-                                    return '$' + value.toLocaleString();
+                                    return formatNumber(value);
                                 }
                             }
                         }
@@ -1293,20 +1444,20 @@
             const salesData = new Array(12).fill(0);
             
             inventoryData.forEach(item => {
-                if (item.Date) {
+                if (item['Date']) {
                     try {
-                        const date = new Date(item.Date);
+                        const date = new Date(item['Date']);
                         const month = date.getMonth();
                         
-                        const purchaseAmt = parseFloat(item['Purchase Amount']) || 
-                                           (parseFloat(item['Purchase Price']) || 0) * (parseFloat(item.Qty) || 0);
-                        const salesAmt = parseFloat(item['Selling Amount']) || 
-                                        (parseFloat(item['Selling Price']) || 0) * (parseFloat(item.Qty) || 0);
+                        const purchaseAmt = parseFloat(item['Purchase_Amount']) || 
+                                           (parseFloat(item['Purchase_Price']) || 0) * (parseFloat(item['Qty']) || 0);
+                        const salesAmt = parseFloat(item['Selling_Amount']) || 
+                                        (parseFloat(item['Selling_Price']) || 0) * (parseFloat(item['Qty']) || 0);
                         
                         purchaseData[month] += purchaseAmt;
                         salesData[month] += salesAmt;
                     } catch (e) {
-                        console.warn('Invalid date format:', item.Date);
+                        console.warn('Invalid date format:', item['Date']);
                     }
                 }
             });
@@ -1324,16 +1475,146 @@
         function showDeliveryModal() {
             document.getElementById('deliveryModal').style.display = 'flex';
             generateDeliveryNumber();
+            populateDeliveryDropdowns();
         }
         
         function closeDeliveryModal() {
             document.getElementById('deliveryModal').style.display = 'none';
-            resetDeliveryForm();
         }
         
         function generateDeliveryNumber() {
-            lastChallanNo++;
+            // Find the next available challan number
+            const existingNumbers = deliveryChallans.map(c => {
+                const match = c.challanNo.match(/\d+/);
+                return match ? parseInt(match[0]) : 0;
+            });
+            
+            const maxNumber = Math.max(1000, ...existingNumbers);
+            lastChallanNo = maxNumber + 1;
             document.getElementById('deliveryNo').value = `DC-${lastChallanNo}`;
+        }
+        
+        function populateDeliveryDropdowns() {
+            const poSelect = document.getElementById('poSelect');
+            const deliveryToSelect = document.getElementById('deliveryToSelect');
+            
+            if (!poSelect || !deliveryToSelect) return;
+            
+            // Clear existing options
+            poSelect.innerHTML = '<option value="">-- Select PO Number --</option>';
+            deliveryToSelect.innerHTML = '<option value="">-- Select Delivery To --</option>';
+            
+            if (inventoryData.length === 0) return;
+            
+            // Get unique PO Numbers and Delivery To locations
+            const poNumbers = new Set();
+            const deliveryLocations = new Map();
+            
+            inventoryData.forEach(item => {
+                if (item['PO_Number'] && item['PO_Number'].trim() !== '') {
+                    poNumbers.add(item['PO_Number']);
+                }
+                
+                if (item['Delivery_To'] && item['Delivery_To'].trim() !== '') {
+                    deliveryLocations.set(item['Delivery_To'], item['Delivery_Address'] || '');
+                }
+            });
+            
+            // Add PO Numbers to dropdown
+            poNumbers.forEach(poNumber => {
+                const option = document.createElement('option');
+                option.value = poNumber;
+                option.textContent = poNumber;
+                poSelect.appendChild(option);
+            });
+            
+            // Add Delivery To locations to dropdown
+            deliveryLocations.forEach((address, location) => {
+                const option = document.createElement('option');
+                option.value = location;
+                option.textContent = location;
+                option.setAttribute('data-address', address);
+                deliveryToSelect.appendChild(option);
+            });
+        }
+        
+        function updatePRNoAndDeliveryTo() {
+            const poNumber = document.getElementById('poSelect').value;
+            const prNoInput = document.getElementById('prNo');
+            const deliveryToSelect = document.getElementById('deliveryToSelect');
+            
+            if (!poNumber) {
+                prNoInput.value = '';
+                return;
+            }
+            
+            // Find the first matching record with this PO Number
+            const matchingRecord = inventoryData.find(item => item['PO_Number'] === poNumber);
+            
+            if (matchingRecord) {
+                prNoInput.value = matchingRecord['PR_No'] || '';
+                
+                // Update Delivery To dropdown
+                if (matchingRecord['Delivery_To']) {
+                    deliveryToSelect.value = matchingRecord['Delivery_To'];
+                    updateDeliveryAddress();
+                }
+                
+                // Populate items for this PO
+                populateItemsForPO(poNumber);
+            }
+        }
+        
+        function updateDeliveryAddress() {
+            const deliveryTo = document.getElementById('deliveryToSelect').value;
+            const addressTextarea = document.getElementById('deliveryAddress');
+            
+            if (!deliveryTo) {
+                addressTextarea.value = '';
+                return;
+            }
+            
+            // Find the address for this delivery location
+            const matchingRecord = inventoryData.find(item => item['Delivery_To'] === deliveryTo);
+            
+            if (matchingRecord && matchingRecord['Delivery_Address']) {
+                addressTextarea.value = matchingRecord['Delivery_Address'];
+            } else {
+                // Try to find in dropdown options
+                const selectedOption = document.querySelector(`#deliveryToSelect option[value="${deliveryTo}"]`);
+                if (selectedOption && selectedOption.dataset.address) {
+                    addressTextarea.value = selectedOption.dataset.address;
+                } else {
+                    addressTextarea.value = '';
+                }
+            }
+        }
+        
+        function populateItemsForPO(poNumber) {
+            const itemsContainer = document.getElementById('deliveryItems');
+            itemsContainer.innerHTML = '';
+            
+            // Find all items for this PO Number
+            const poItems = inventoryData.filter(item => item['PO_Number'] === poNumber);
+            
+            if (poItems.length === 0) {
+                addDeliveryItem(); // Add empty row if no items found
+                return;
+            }
+            
+            // Add items from the PO
+            poItems.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = 'item-row';
+                div.innerHTML = `
+                    <input type="text" placeholder="Item" class="item-name" value="${item['Item'] || ''}" required>
+                    <input type="text" placeholder="Item Description" class="item-desc" value="${item['Item_Description'] || ''}" required>
+                    <input type="text" placeholder="Unit" class="item-unit" value="${item['Unit'] || ''}" required>
+                    <input type="number" placeholder="Quantity" class="item-qty" min="1" value="${item['Qty'] || 1}" required>
+                    <button type="button" class="remove-item" onclick="removeDeliveryItem(this)">&times;</button>
+                `;
+                itemsContainer.appendChild(div);
+            });
         }
         
         function addDeliveryItem() {
@@ -1341,7 +1622,9 @@
             const div = document.createElement('div');
             div.className = 'item-row';
             div.innerHTML = `
+                <input type="text" placeholder="Item" class="item-name" required>
                 <input type="text" placeholder="Item Description" class="item-desc" required>
+                <input type="text" placeholder="Unit" class="item-unit" required>
                 <input type="number" placeholder="Quantity" class="item-qty" min="1" value="1" required>
                 <button type="button" class="remove-item" onclick="removeDeliveryItem(this)">&times;</button>
             `;
@@ -1355,37 +1638,29 @@
             }
         }
         
-        function addSelectedItem() {
-            const select = document.getElementById('itemSelect');
-            const selectedItem = select.value;
-            
-            if (selectedItem) {
-                const container = document.getElementById('deliveryItems');
-                const div = document.createElement('div');
-                div.className = 'item-row';
-                div.innerHTML = `
-                    <input type="text" placeholder="Item Description" class="item-desc" value="${selectedItem}" required>
-                    <input type="number" placeholder="Quantity" class="item-qty" min="1" value="1" required>
-                    <button type="button" class="remove-item" onclick="removeDeliveryItem(this)">&times;</button>
-                `;
-                container.appendChild(div);
-                select.value = '';
-            }
-        }
-        
         function generateDelivery() {
             const challanNo = document.getElementById('deliveryNo').value;
             const date = document.getElementById('deliveryDate').value;
+            const poNumber = document.getElementById('poSelect').value;
+            const prNo = document.getElementById('prNo').value;
+            const deliveryTo = document.getElementById('deliveryToSelect').value;
+            const deliveryAddress = document.getElementById('deliveryAddress').value;
+            const fromNumber = document.getElementById('fromNumber').value;
             const items = [];
             
             // Collect items
-            document.querySelectorAll('#deliveryItems .item-row').forEach(row => {
+            document.querySelectorAll('#deliveryItems .item-row').forEach((row, index) => {
+                const itemName = row.querySelector('.item-name').value;
                 const desc = row.querySelector('.item-desc').value;
+                const unit = row.querySelector('.item-unit').value;
                 const qty = row.querySelector('.item-qty').value;
                 
-                if (desc && qty) {
+                if (itemName && desc && unit && qty) {
                     items.push({
+                        serial: index + 1,
+                        item: itemName,
                         description: desc,
+                        unit: unit,
                         quantity: parseInt(qty) || 1
                     });
                 }
@@ -1396,70 +1671,160 @@
                 return;
             }
             
+            if (!deliveryTo || !deliveryAddress) {
+                alert('Please select Delivery To and ensure address is filled');
+                return;
+            }
+            
+            // Save delivery challan
+            const deliveryChallan = {
+                challanNo: challanNo,
+                date: date,
+                poNumber: poNumber,
+                prNo: prNo,
+                deliveryTo: deliveryTo,
+                deliveryAddress: deliveryAddress,
+                fromNumber: fromNumber,
+                items: items,
+                createdAt: new Date().toISOString()
+            };
+            
+            deliveryChallans.push(deliveryChallan);
+            localStorage.setItem('deliveryChallans', JSON.stringify(deliveryChallans));
+            
+            // Update challan select dropdown
+            updateChallanSelect();
+            
             // Generate printable delivery challan
-            printDeliveryChallan(challanNo, date, items);
+            printDeliveryChallan(deliveryChallan);
             
             alert('Delivery Challan generated successfully!');
             closeDeliveryModal();
         }
         
-        function printDeliveryChallan(challanNo, date, items) {
+        function printDeliveryChallan(challanData) {
             const printWindow = window.open('', '_blank');
             printWindow.document.write(`
                 <html>
                 <head>
-                    <title>Delivery Challan - ${challanNo}</title>
+                    <title>Delivery Challan - ${challanData.challanNo}</title>
                     <style>
                         body { font-family: Arial, sans-serif; margin: 40px; }
                         .header { text-align: center; margin-bottom: 30px; }
-                        .header h1 { color: #2c3e50; }
-                        .details { display: flex; justify-content: space-between; margin-bottom: 30px; }
+                        .header h1 { color: #2c3e50; margin-bottom: 5px; }
+                        .challan-info { text-align: right; margin-bottom: 30px; }
+                        .address-section { 
+                            display: flex; 
+                            justify-content: space-between;
+                            margin-bottom: 30px;
+                        }
+                        .address-box { 
+                            width: 48%; 
+                            border: 1px solid #000;
+                            padding: 15px;
+                        }
+                        .address-box h3 { margin-top: 0; }
                         table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-                        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-                        th { background-color: #f8f9fa; }
-                        .footer { margin-top: 50px; text-align: center; color: #666; }
+                        th, td { border: 1px solid #000; padding: 10px; text-align: left; }
+                        th { background-color: #f0f0f0; }
+                        .signature-section { 
+                            display: flex; 
+                            justify-content: space-between;
+                            margin-top: 50px;
+                        }
+                        .signature-box { 
+                            text-align: center;
+                            width: 30%;
+                        }
+                        .signature-line { 
+                            width: 200px; 
+                            height: 1px; 
+                            background: #000; 
+                            margin: 40px auto 10px;
+                        }
+                        .bold { font-weight: bold; }
+                        .text-right { text-align: right; }
+                        .text-center { text-align: center; }
                         @media print {
-                            body { margin: 0; }
+                            body { margin: 10px; }
                         }
                     </style>
                 </head>
                 <body>
                     <div class="header">
                         <h1>DELIVERY CHALLAN</h1>
-                        <p><strong>Challan No:</strong> ${challanNo}</p>
+                        <div class="challan-info">
+                            <div><strong>Challan No:</strong> ${challanData.challanNo}</div>
+                            <div><strong>Date:</strong> ${formatDate(challanData.date)}</div>
+                        </div>
                     </div>
-                    <div class="details">
-                        <div><strong>Date:</strong> ${formatDate(date)}</div>
-                        <div><strong>Generated By:</strong> Inventory System</div>
+                    
+                    <div class="address-section">
+                        <div class="address-box">
+                            <h3>From:</h3>
+                            <p><strong>PO Number:</strong> ${challanData.poNumber || 'N/A'}</p>
+                            <p>From MUDI</p>
+                            <p>Location: House#2, Road No #96, Gulshan-2</p>
+                            <p>${challanData.fromNumber ? 'Number: ' + challanData.fromNumber : ''}</p>
+                        </div>
+                        
+                        <div class="address-box">
+                            <h3>To:</h3>
+                            <p><strong>Delivery To:</strong> ${challanData.deliveryTo}</p>
+                            <p><strong>Delivery Address:</strong><br>${challanData.deliveryAddress.replace(/\n/g, '<br>')}</p>
+                            <p><strong>PR No:</strong> ${challanData.prNo || 'N/A'}</p>
+                        </div>
                     </div>
+                    
                     <table>
                         <thead>
                             <tr>
-                                <th>#</th>
+                                <th>SL</th>
+                                <th>Item</th>
                                 <th>Item Description</th>
+                                <th>Unit</th>
                                 <th>Quantity</th>
                             </tr>
                         </thead>
                         <tbody>
-                            ${items.map((item, index) => `
+                            ${challanData.items.map(item => `
                                 <tr>
-                                    <td>${index + 1}</td>
+                                    <td>${item.serial}</td>
+                                    <td>${item.item}</td>
                                     <td>${item.description}</td>
+                                    <td>${item.unit}</td>
                                     <td>${item.quantity}</td>
                                 </tr>
                             `).join('')}
                         </tbody>
                     </table>
-                    <div class="footer">
-                        <p>This is a computer generated document</p>
-                        <p>Inventory Management System © 2024</p>
+                    
+                    <div class="signature-section">
+                        <div class="signature-box">
+                            <p>Created By</p>
+                            <div class="signature-line"></div>
+                            <p class="bold">Salim Bhuiyan</p>
+                            <p>Assistant Manager</p>
+                        </div>
+                        
+                        <div class="signature-box">
+                            <p>Authorised By</p>
+                            <div class="signature-line"></div>
+                            <p class="bold">Masru Ahmed Rafi</p>
+                            <p>CEO</p>
+                        </div>
+                        
+                        <div class="signature-box">
+                            <p>Received By</p>
+                            <div class="signature-line"></div>
+                            <p>&nbsp;</p>
+                            <p>&nbsp;</p>
+                        </div>
                     </div>
+                    
                     <script>
                         window.onload = function() {
                             window.print();
-                            setTimeout(function() {
-                                window.close();
-                            }, 1000);
                         };
                     <\/script>
                 </body>
@@ -1468,45 +1833,98 @@
             printWindow.document.close();
         }
         
-        function resetDeliveryForm() {
-            document.getElementById('deliveryItems').innerHTML = `
-                <div class="item-row">
-                    <input type="text" placeholder="Item Description" class="item-desc" required>
-                    <input type="number" placeholder="Quantity" class="item-qty" min="1" value="1" required>
-                    <button type="button" class="remove-item" onclick="removeDeliveryItem(this)">&times;</button>
-                </div>
-            `;
-            generateDeliveryNumber();
-        }
-        
         // ============================================
         // BILL GENERATOR FUNCTIONS
         // ============================================
         function showBillModal() {
             document.getElementById('billModal').style.display = 'flex';
+            updateChallanSelect();
             generateBillNumber();
-            calculateBillTotal();
         }
         
         function closeBillModal() {
             document.getElementById('billModal').style.display = 'none';
-            resetBillForm();
+        }
+        
+        function updateChallanSelect() {
+            const challanSelect = document.getElementById('challanSelect');
+            
+            if (!challanSelect) return;
+            
+            challanSelect.innerHTML = '<option value="">-- Select Delivery Challan --</option>';
+            
+            if (deliveryChallans.length === 0) return;
+            
+            // Add delivery challans to dropdown
+            deliveryChallans.forEach((challan, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = `${challan.challanNo} - ${challan.poNumber} - ${challan.deliveryTo}`;
+                challanSelect.appendChild(option);
+            });
         }
         
         function generateBillNumber() {
-            lastBillNo++;
+            // Find the next available bill number
+            const existingNumbers = bills.map(b => {
+                const match = b.billNo.match(/\d+/);
+                return match ? parseInt(match[0]) : 0;
+            });
+            
+            const maxNumber = Math.max(1000, ...existingNumbers);
+            lastBillNo = maxNumber + 1;
             document.getElementById('billNo').value = `BILL-${lastBillNo}`;
+        }
+        
+        function loadBillFromChallan() {
+            const challanIndex = document.getElementById('challanSelect').value;
+            
+            if (challanIndex === '') {
+                resetBillForm();
+                return;
+            }
+            
+            const challan = deliveryChallans[challanIndex];
+            
+            // Set bill number same as challan number
+            document.getElementById('billNo').value = challan.challanNo.replace('DC-', 'BILL-');
+            document.getElementById('billDate').value = challan.date;
+            document.getElementById('billPRNo').value = challan.prNo || '';
+            document.getElementById('billDeliveryTo').value = challan.deliveryTo;
+            document.getElementById('billDeliveryAddress').value = challan.deliveryAddress;
+            
+            // Populate items from challan
+            const itemsContainer = document.getElementById('billItems');
+            itemsContainer.innerHTML = '';
+            
+            challan.items.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = 'bill-item-row';
+                div.innerHTML = `
+                    <input type="text" placeholder="Item" class="bill-item-name" value="${item.item}" required>
+                    <input type="text" placeholder="Item Description" class="bill-item-desc" value="${item.description}" required>
+                    <input type="number" placeholder="Qty" class="bill-item-qty" min="1" value="${item.quantity}" required oninput="calculateItemTotal(this)">
+                    <input type="number" placeholder="Rate" class="bill-item-rate" min="0" step="0.01" value="0" required oninput="calculateItemTotal(this)">
+                    <input type="text" placeholder="Amount" class="bill-item-total" readonly>
+                    <button type="button" class="remove-item" onclick="removeBillItem(this)">&times;</button>
+                `;
+                itemsContainer.appendChild(div);
+                calculateItemTotal(div.querySelector('.bill-item-qty'));
+            });
+            
+            calculateBillTotal();
         }
         
         function addBillItem() {
             const container = document.getElementById('billItems');
             const div = document.createElement('div');
-            div.className = 'item-row';
+            div.className = 'bill-item-row';
             div.innerHTML = `
+                <input type="text" placeholder="Item" class="bill-item-name" required>
                 <input type="text" placeholder="Item Description" class="bill-item-desc" required>
-                <input type="number" placeholder="Quantity" class="bill-item-qty" min="1" value="1" required oninput="calculateItemTotal(this)">
-                <input type="number" placeholder="Selling Price" class="bill-item-price" min="0" step="0.01" required oninput="calculateItemTotal(this)">
-                <input type="text" placeholder="Total" class="bill-item-total" readonly>
+                <input type="number" placeholder="Qty" class="bill-item-qty" min="1" value="1" required oninput="calculateItemTotal(this)">
+                <input type="number" placeholder="Rate" class="bill-item-rate" min="0" step="0.01" required oninput="calculateItemTotal(this)">
+                <input type="text" placeholder="Amount" class="bill-item-total" readonly>
                 <button type="button" class="remove-item" onclick="removeBillItem(this)">&times;</button>
             `;
             container.appendChild(div);
@@ -1520,77 +1938,64 @@
             calculateBillTotal();
         }
         
-        function addSelectedBillItem() {
-            const select = document.getElementById('billItemSelect');
-            const selectedValue = select.value;
-            
-            if (selectedValue) {
-                const [itemName, itemPrice] = selectedValue.split('|');
-                const container = document.getElementById('billItems');
-                const div = document.createElement('div');
-                div.className = 'item-row';
-                div.innerHTML = `
-                    <input type="text" placeholder="Item Description" class="bill-item-desc" value="${itemName}" required>
-                    <input type="number" placeholder="Quantity" class="bill-item-qty" min="1" value="1" required oninput="calculateItemTotal(this)">
-                    <input type="number" placeholder="Selling Price" class="bill-item-price" min="0" step="0.01" value="${itemPrice || 0}" required oninput="calculateItemTotal(this)">
-                    <input type="text" placeholder="Total" class="bill-item-total" readonly>
-                    <button type="button" class="remove-item" onclick="removeBillItem(this)">&times;</button>
-                `;
-                container.appendChild(div);
-                
-                calculateItemTotal(div.querySelector('.bill-item-qty'));
-                select.value = '';
-                calculateBillTotal();
-            }
-        }
-        
         function calculateItemTotal(input) {
-            const row = input.closest('.item-row');
+            const row = input.closest('.bill-item-row');
             const qty = parseFloat(row.querySelector('.bill-item-qty').value) || 0;
-            const price = parseFloat(row.querySelector('.bill-item-price').value) || 0;
-            const total = qty * price;
+            const rate = parseFloat(row.querySelector('.bill-item-rate').value) || 0;
+            const total = qty * rate;
             
             row.querySelector('.bill-item-total').value = total.toFixed(2);
             calculateBillTotal();
         }
         
         function calculateBillTotal() {
-            let subTotal = 0;
+            let totalQty = 0;
+            let totalAmount = 0;
             
-            document.querySelectorAll('#billItems .item-row').forEach(row => {
-                const total = parseFloat(row.querySelector('.bill-item-total').value) || 0;
-                subTotal += total;
+            document.querySelectorAll('#billItems .bill-item-row').forEach(row => {
+                const qty = parseFloat(row.querySelector('.bill-item-qty').value) || 0;
+                const amount = parseFloat(row.querySelector('.bill-item-total').value) || 0;
+                
+                totalQty += qty;
+                totalAmount += amount;
             });
             
-            const taxPercent = parseFloat(document.getElementById('taxPercent').value) || 0;
-            const taxAmount = subTotal * (taxPercent / 100);
-            const totalAmount = subTotal + taxAmount;
+            document.getElementById('totalQty').value = totalQty;
+            document.getElementById('totalAmount').value = formatNumber(totalAmount);
             
-            document.getElementById('subTotal').value = subTotal.toFixed(2);
-            document.getElementById('taxAmount').value = taxAmount.toFixed(2);
-            document.getElementById('totalAmount').value = totalAmount.toFixed(2);
+            // Update amount in words
+            if (totalAmount > 0) {
+                document.getElementById('amountInWords').style.display = 'block';
+                document.getElementById('amountWords').textContent = numberToWords(totalAmount);
+            } else {
+                document.getElementById('amountInWords').style.display = 'none';
+            }
         }
         
         function generateBill() {
             const billNo = document.getElementById('billNo').value;
             const date = document.getElementById('billDate').value;
-            const taxPercent = document.getElementById('taxPercent').value;
+            const prNo = document.getElementById('billPRNo').value;
+            const deliveryTo = document.getElementById('billDeliveryTo').value;
+            const deliveryAddress = document.getElementById('billDeliveryAddress').value;
             const items = [];
             
             // Collect items
-            document.querySelectorAll('#billItems .item-row').forEach((row, index) => {
+            document.querySelectorAll('#billItems .bill-item-row').forEach((row, index) => {
+                const itemName = row.querySelector('.bill-item-name').value;
                 const desc = row.querySelector('.bill-item-desc').value;
                 const qty = row.querySelector('.bill-item-qty').value;
-                const price = row.querySelector('.bill-item-price').value;
+                const rate = row.querySelector('.bill-item-rate').value;
                 const total = row.querySelector('.bill-item-total').value;
                 
-                if (desc && qty && price) {
+                if (itemName && desc && qty && rate) {
                     items.push({
                         serial: index + 1,
+                        item: itemName,
                         description: desc,
-                        quantity: qty,
-                        price: parseFloat(price).toFixed(2),
-                        total: parseFloat(total).toFixed(2)
+                        quantity: parseInt(qty) || 1,
+                        rate: parseFloat(rate).toFixed(2),
+                        amount: parseFloat(total).toFixed(2)
                     });
                 }
             });
@@ -1601,107 +2006,173 @@
             }
             
             // Calculate totals
-            const subTotal = items.reduce((sum, item) => sum + parseFloat(item.total), 0);
-            const taxAmount = subTotal * (taxPercent / 100);
-            const totalAmount = subTotal + taxAmount;
+            const totalQty = items.reduce((sum, item) => sum + parseInt(item.quantity), 0);
+            const totalAmount = items.reduce((sum, item) => sum + parseFloat(item.amount), 0);
+            
+            // Save bill
+            const bill = {
+                billNo: billNo,
+                date: date,
+                prNo: prNo,
+                deliveryTo: deliveryTo,
+                deliveryAddress: deliveryAddress,
+                items: items,
+                totalQty: totalQty,
+                totalAmount: totalAmount,
+                amountInWords: numberToWords(totalAmount),
+                createdAt: new Date().toISOString()
+            };
+            
+            bills.push(bill);
+            localStorage.setItem('bills', JSON.stringify(bills));
             
             // Generate printable bill
-            printBill(billNo, date, items, subTotal, taxAmount, totalAmount, taxPercent);
+            printBill(bill);
             
             alert('Bill generated successfully!');
             closeBillModal();
         }
         
-        function printBill(billNo, date, items, subTotal, taxAmount, totalAmount, taxPercent) {
+        function printBill(billData) {
             const printWindow = window.open('', '_blank');
             printWindow.document.write(`
                 <html>
                 <head>
-                    <title>Invoice - ${billNo}</title>
+                    <title>Bill - ${billData.billNo}</title>
                     <style>
                         body { font-family: Arial, sans-serif; margin: 40px; }
                         .header { text-align: center; margin-bottom: 30px; }
-                        .header h1 { color: #2c3e50; }
-                        .details { display: flex; justify-content: space-between; margin-bottom: 30px; }
+                        .header h1 { color: #2c3e50; margin-bottom: 5px; }
+                        .bill-info { text-align: right; margin-bottom: 30px; }
+                        .address-section { 
+                            display: flex; 
+                            justify-content: space-between;
+                            margin-bottom: 30px;
+                        }
+                        .address-box { 
+                            width: 48%; 
+                            border: 1px solid #000;
+                            padding: 15px;
+                        }
+                        .address-box h3 { margin-top: 0; }
                         table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-                        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-                        th { background-color: #f8f9fa; }
-                        .totals { margin-left: auto; width: 300px; }
-                        .totals table { width: 100%; }
-                        .footer { margin-top: 50px; text-align: center; color: #666; }
-                        .signature { margin-top: 50px; display: flex; justify-content: space-between; }
+                        th, td { border: 1px solid #000; padding: 10px; text-align: left; }
+                        th { background-color: #f0f0f0; }
+                        .signature-section { 
+                            display: flex; 
+                            justify-content: space-between;
+                            margin-top: 50px;
+                        }
+                        .signature-box { 
+                            text-align: center;
+                            width: 30%;
+                        }
+                        .signature-line { 
+                            width: 200px; 
+                            height: 1px; 
+                            background: #000; 
+                            margin: 40px auto 10px;
+                        }
+                        .bold { font-weight: bold; }
+                        .numeric { text-align: right; }
+                        .amount-words { 
+                            background: #f8f9fa; 
+                            border: 1px solid #ddd; 
+                            padding: 15px; 
+                            margin-top: 20px;
+                            font-style: italic;
+                        }
                         @media print {
-                            body { margin: 0; }
+                            body { margin: 10px; }
                         }
                     </style>
                 </head>
                 <body>
                     <div class="header">
-                        <h1>TAX INVOICE</h1>
-                        <p><strong>Invoice No:</strong> ${billNo}</p>
+                        <h1>BILL</h1>
+                        <div class="bill-info">
+                            <div><strong>Bill No:</strong> ${billData.billNo}</div>
+                            <div><strong>Date:</strong> ${formatDate(billData.date)}</div>
+                        </div>
                     </div>
-                    <div class="details">
-                        <div><strong>Date:</strong> ${formatDate(date)}</div>
-                        <div><strong>Generated By:</strong> Inventory System</div>
+                    
+                    <div class="address-section">
+                        <div class="address-box">
+                            <h3>From MUDI</h3>
+                            <p>Location: House#2, Road No #96, Gulshan-2</p>
+                        </div>
+                        
+                        <div class="address-box">
+                            <h3>To:</h3>
+                            <p><strong>Delivery To:</strong> ${billData.deliveryTo}</p>
+                            <p><strong>Delivery Address:</strong><br>${billData.deliveryAddress.replace(/\n/g, '<br>')}</p>
+                            <p><strong>PR No:</strong> ${billData.prNo || 'N/A'}</p>
+                        </div>
                     </div>
+                    
                     <table>
                         <thead>
                             <tr>
-                                <th>#</th>
+                                <th>SL</th>
+                                <th>Item</th>
                                 <th>Item Description</th>
-                                <th>Quantity</th>
-                                <th>Price</th>
-                                <th>Total</th>
+                                <th>Qty</th>
+                                <th class="numeric">Rate</th>
+                                <th class="numeric">Amount</th>
                             </tr>
                         </thead>
                         <tbody>
-                            ${items.map(item => `
+                            ${billData.items.map(item => `
                                 <tr>
                                     <td>${item.serial}</td>
+                                    <td>${item.item}</td>
                                     <td>${item.description}</td>
                                     <td>${item.quantity}</td>
-                                    <td>${formatCurrency(item.price)}</td>
-                                    <td>${formatCurrency(item.total)}</td>
+                                    <td class="numeric">${formatNumber(item.rate)}</td>
+                                    <td class="numeric">${formatNumber(item.amount)}</td>
                                 </tr>
                             `).join('')}
                         </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="3"><strong>Total</strong></td>
+                                <td><strong>${billData.totalQty}</strong></td>
+                                <td></td>
+                                <td class="numeric"><strong>${formatNumber(billData.totalAmount)}</strong></td>
+                            </tr>
+                        </tfoot>
                     </table>
-                    <div class="totals">
-                        <table>
-                            <tr>
-                                <td><strong>Sub Total:</strong></td>
-                                <td>${formatCurrency(subTotal)}</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Tax (${taxPercent}%):</strong></td>
-                                <td>${formatCurrency(taxAmount)}</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Total Amount:</strong></td>
-                                <td><strong>${formatCurrency(totalAmount)}</strong></td>
-                            </tr>
-                        </table>
+                    
+                    <div class="amount-words">
+                        <strong>Amount in Words:</strong> ${billData.amountInWords}
                     </div>
-                    <div class="signature">
-                        <div>
-                            <p>_________________</p>
-                            <p>Customer Signature</p>
+                    
+                    <div class="signature-section">
+                        <div class="signature-box">
+                            <p>Created By</p>
+                            <div class="signature-line"></div>
+                            <p class="bold">Salim Bhuiyan</p>
+                            <p>Assistant Manager</p>
                         </div>
-                        <div>
-                            <p>_________________</p>
-                            <p>Authorized Signature</p>
+                        
+                        <div class="signature-box">
+                            <p>Authorised By</p>
+                            <div class="signature-line"></div>
+                            <p class="bold">Masru Ahmed Rafi</p>
+                            <p>CEO</p>
+                        </div>
+                        
+                        <div class="signature-box">
+                            <p>Received By</p>
+                            <div class="signature-line"></div>
+                            <p>&nbsp;</p>
+                            <p>&nbsp;</p>
                         </div>
                     </div>
-                    <div class="footer">
-                        <p>This is a computer generated invoice</p>
-                        <p>Inventory Management System © 2024</p>
-                    </div>
+                    
                     <script>
                         window.onload = function() {
                             window.print();
-                            setTimeout(function() {
-                                window.close();
-                            }, 1000);
                         };
                     <\/script>
                 </body>
@@ -1712,16 +2183,19 @@
         
         function resetBillForm() {
             document.getElementById('billItems').innerHTML = `
-                <div class="item-row">
+                <div class="bill-item-row">
+                    <input type="text" placeholder="Item" class="bill-item-name" required>
                     <input type="text" placeholder="Item Description" class="bill-item-desc" required>
-                    <input type="number" placeholder="Quantity" class="bill-item-qty" min="1" value="1" required oninput="calculateItemTotal(this)">
-                    <input type="number" placeholder="Selling Price" class="bill-item-price" min="0" step="0.01" required oninput="calculateItemTotal(this)">
-                    <input type="text" placeholder="Total" class="bill-item-total" readonly>
+                    <input type="number" placeholder="Qty" class="bill-item-qty" min="1" value="1" required oninput="calculateItemTotal(this)">
+                    <input type="number" placeholder="Rate" class="bill-item-rate" min="0" step="0.01" required oninput="calculateItemTotal(this)">
+                    <input type="text" placeholder="Amount" class="bill-item-total" readonly>
                     <button type="button" class="remove-item" onclick="removeBillItem(this)">&times;</button>
                 </div>
             `;
+            document.getElementById('billPRNo').value = '';
+            document.getElementById('billDeliveryTo').value = '';
+            document.getElementById('billDeliveryAddress').value = '';
             generateBillNumber();
-            document.getElementById('taxPercent').value = 18;
             calculateBillTotal();
         }
         
@@ -1754,60 +2228,18 @@
             }
         }
         
-        function populateItemDropdowns() {
-            const deliverySelect = document.getElementById('itemSelect');
-            const billSelect = document.getElementById('billItemSelect');
+        function loadSavedData() {
+            // Load saved delivery challans and bills from localStorage
+            deliveryChallans = JSON.parse(localStorage.getItem('deliveryChallans')) || [];
+            bills = JSON.parse(localStorage.getItem('bills')) || [];
             
-            if (!deliverySelect || !billSelect) return;
-            
-            // Clear existing options
-            deliverySelect.innerHTML = '<option value="">-- Select Item --</option>';
-            billSelect.innerHTML = '<option value="">-- Select Item --</option>';
-            
-            if (inventoryData.length === 0) return;
-            
-            // Get unique items
-            const uniqueItems = new Map();
-            
-            inventoryData.forEach(item => {
-                const itemName = item['Item Description'] || item.Item;
-                const itemPrice = item['Selling Price'] || 0;
-                
-                if (itemName && itemName.trim() !== '' && !uniqueItems.has(itemName)) {
-                    uniqueItems.set(itemName, itemPrice);
-                }
-            });
-            
-            // Add to dropdowns
-            uniqueItems.forEach((price, name) => {
-                const deliveryOption = document.createElement('option');
-                deliveryOption.value = name;
-                deliveryOption.textContent = name;
-                deliverySelect.appendChild(deliveryOption);
-                
-                const billOption = document.createElement('option');
-                billOption.value = `${name}|${price}`;
-                billOption.textContent = `${name} (Price: ${formatCurrency(price)})`;
-                billSelect.appendChild(billOption);
-            });
+            // Update counters based on saved data
+            updateChallanSelect();
         }
         
-        function updateCounters() {
-            // Find max challan and bill numbers from data
-            inventoryData.forEach(item => {
-                if (item['BILL NO']) {
-                    const match = item['BILL NO'].toString().match(/\d+/);
-                    if (match) {
-                        const num = parseInt(match[0]);
-                        if (num > lastBillNo) lastBillNo = num;
-                    }
-                }
-            });
-        }
-        
-        function formatCurrency(amount) {
-            const num = parseFloat(amount) || 0;
-            return '$' + num.toLocaleString('en-US', {
+        function formatNumber(num) {
+            const n = parseFloat(num) || 0;
+            return n.toLocaleString('en-US', {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2
             });
@@ -1838,15 +2270,72 @@
             }
         }
         
-        function getBillStatusClass(status) {
-            const statusStr = (status || '').toLowerCase();
-            if (statusStr.includes('paid')) {
-                return 'status-delivered';
-            } else if (statusStr.includes('cancel')) {
-                return 'status-cancelled';
-            } else {
-                return 'status-pending';
+        function numberToWords(num) {
+            // Convert number to words
+            const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
+            const teens = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+            const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+            
+            function convertHundreds(n) {
+                if (n === 0) return '';
+                let result = '';
+                
+                if (n >= 100) {
+                    result += ones[Math.floor(n / 100)] + ' Hundred ';
+                    n %= 100;
+                }
+                
+                if (n >= 20) {
+                    result += tens[Math.floor(n / 10)] + ' ';
+                    n %= 10;
+                } else if (n >= 10) {
+                    result += teens[n - 10] + ' ';
+                    return result;
+                }
+                
+                if (n > 0) {
+                    result += ones[n] + ' ';
+                }
+                
+                return result;
             }
+            
+            let number = parseFloat(num) || 0;
+            if (number === 0) return 'Zero Taka Only';
+            
+            let words = '';
+            let decimalPart = Math.round((number - Math.floor(number)) * 100);
+            
+            // Convert integer part
+            let integerPart = Math.floor(number);
+            
+            if (integerPart >= 10000000) {
+                words += convertHundreds(Math.floor(integerPart / 10000000)) + 'Crore ';
+                integerPart %= 10000000;
+            }
+            
+            if (integerPart >= 100000) {
+                words += convertHundreds(Math.floor(integerPart / 100000)) + 'Lakh ';
+                integerPart %= 100000;
+            }
+            
+            if (integerPart >= 1000) {
+                words += convertHundreds(Math.floor(integerPart / 1000)) + 'Thousand ';
+                integerPart %= 1000;
+            }
+            
+            if (integerPart > 0) {
+                words += convertHundreds(integerPart);
+            }
+            
+            words = words.trim() + ' Taka';
+            
+            // Add decimal part
+            if (decimalPart > 0) {
+                words += ' and ' + convertHundreds(decimalPart).trim() + ' Paisa';
+            }
+            
+            return words + ' Only';
         }
         
         function exportToExcel() {
@@ -1866,8 +2355,34 @@
             }
         }
         
-        function printSupplierReport() {
-            window.print();
+        function printDeliveryAnalysis() {
+            const printContent = document.getElementById('delivery-analysis-table').outerHTML;
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>Delivery Analysis Report</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; margin: 40px; }
+                        table { width: 100%; border-collapse: collapse; }
+                        th, td { border: 1px solid #000; padding: 10px; text-align: left; }
+                        th { background-color: #f0f0f0; }
+                        .numeric { text-align: right; }
+                        h1 { text-align: center; }
+                    </style>
+                </head>
+                <body>
+                    <h1>Delivery Location Analysis Report</h1>
+                    ${printContent}
+                    <script>
+                        window.onload = function() {
+                            window.print();
+                        };
+                    <\/script>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
         }
     </script>
 </body>
